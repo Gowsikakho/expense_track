@@ -6,4 +6,5 @@ This expense tracking application provides comprehensive budget and expense mana
 ## Core Features
 - Budget creation and management
 - Expense tracking
+- Visual analytics and charts
 
