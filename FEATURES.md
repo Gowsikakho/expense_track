@@ -7,4 +7,5 @@ This expense tracking application provides comprehensive budget and expense mana
 - Budget creation and management
 - Expense tracking
 - Visual analytics and charts
+- User authentication with Clerk
 
