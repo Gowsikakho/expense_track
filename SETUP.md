@@ -5,3 +5,6 @@
 - npm or yarn package manager
 - Git for version control
 
+## Installation Steps
+1. Clone the repository
+
