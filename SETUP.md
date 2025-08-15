@@ -10,4 +10,5 @@
 2. Install dependencies: `npm install`
 3. Set up environment variables
 4. Run database migrations
+5. Start development server: `npm run dev`
 
