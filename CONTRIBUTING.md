@@ -7,4 +7,6 @@ Please be respectful and professional in all interactions.
 
 ## How to Contribute
 1. Fork the repository
+2. Create a feature branch
+3. Make your changes
 
