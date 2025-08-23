@@ -9,4 +9,6 @@ Please be respectful and professional in all interactions.
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
+4. Write tests for new features
+5. Submit a pull request
 
