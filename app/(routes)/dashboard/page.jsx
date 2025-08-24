@@ -2,12 +2,17 @@
 import { UserButton, useUser } from '@clerk/nextjs'
 import React, { useEffect, useState } from 'react'
 import CardInfo from './_components/CardInfo';
-import { desc, eq, getTableColumns, sql } from 'drizzle-orm';
-import { Budgets, Expenses } from '@/utils/schema';
+import { desc, eq, getTableColumns, sql, and, gte, lte } from 'drizzle-orm';
+import { Budgets, Expenses, Categories, Income } from '@/utils/schema';
 import { db } from '@/utils/dbConfig';
 import BarChartDashboard from './_components/BarChartDashboard';
 import BudgetItem from './budget/_components/BudgetItem';
 import ExpenseListTable from './expenses/_components/ExpenseListTable';
+import ExpenseCalendar from './_components/ExpenseCalendar';
+import IncomeSavingsTracker from './_components/IncomeSavingsTracker';
+import CategoriesManager from './_components/CategoriesManager';
+import ExpenseAnalytics from './_components/ExpenseAnalytics';
+import moment from 'moment';
 
 const page = () => {
 
@@ -15,9 +20,16 @@ const page = () => {
 
     const [budgetList, setBudgetList] = useState([]);
     const [expensesList, setExpensesList] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [monthlyIncome, setMonthlyIncome] = useState(0);
+    const [activeTab, setActiveTab] = useState('overview');
 
     useEffect(() => {
-        user && getBudgetList();
+        if (user) {
+            getBudgetList();
+            fetchCategories();
+            fetchMonthlyIncome();
+        }
     }, [user]);
 
     const getBudgetList = async () => {
@@ -40,13 +52,47 @@ const page = () => {
             id: Expenses.id,
             name: Expenses.name,
             amount: Expenses.amount,
-            createdAt: Expenses.createdAt
-        }).from(Budgets)
-            .rightJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
-            .where(eq(Budgets.createdBy, user.primaryEmailAddress?.emailAddress))
-            .orderBy(desc(Expenses.id));
+            createdAt: Expenses.createdAt,
+            date: Expenses.date,
+            categoryId: Expenses.categoryId
+        }).from(Expenses)
+            .where(eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress))
+            .orderBy(desc(Expenses.id))
+            .limit(10);
 
         setExpensesList(result);
+    }
+
+    const fetchCategories = async () => {
+        try {
+            const result = await db.select()
+                .from(Categories)
+                .where(eq(Categories.createdBy, user.primaryEmailAddress?.emailAddress));
+            setCategories(result);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    }
+
+    const fetchMonthlyIncome = async () => {
+        try {
+            const currentMonth = moment().format('YYYY-MM');
+            const result = await db.select()
+                .from(Income)
+                .where(
+                    and(
+                        eq(Income.createdBy, user.primaryEmailAddress?.emailAddress),
+                        eq(Income.month, currentMonth)
+                    )
+                )
+                .limit(1);
+            
+            if (result.length > 0) {
+                setMonthlyIncome(Number(result[0].amount));
+            }
+        } catch (error) {
+            console.error('Error fetching income:', error);
+        }
     }
 
     // useEffect(() => {
@@ -65,52 +111,137 @@ const page = () => {
                     <p className="w-[260px] mt-3 h-[20px] rounded-lg bg-slate-800 animate-pulse"></p>
                 </div>
             }
-            <CardInfo
-                budgetList={budgetList}
-            />
-            <div className="grid grid-cols-1 lg:grid-cols-3 mt-10 gap-5">
-                {user ?
-                    <div className="md:col-span-2 flex flex-col gap-4">
-                        <BarChartDashboard
-                            budgetList={budgetList}
-                        />
-
-                        <div className="flex flex-col gap-1 mt-2">
-                            <h2 className="text-lg font-bold">Latest Expenses</h2>
-                            <ExpenseListTable
-                                expensesList={expensesList}
-                                refreshData={() => getBudgetList()}
-                            />
-                        </div>
-
-                    </div> :
-                    <div className="md:col-span-2 flex flex-col gap-4">
-                        <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
-                        <div className="w-1/3 h-[20px] rounded-lg animate-pulse bg-slate-800"></div>
-                        <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
-                    </div>
-                }
-                <div className="grid gap-3">
-                    {user ?
-                        <h2 className="font-bold text-lg">Latest Budgets</h2> :
-                        <h2 className="w-1/2 h-[20px] rounded-lg animate-pulse bg-slate-800"></h2>
-                    }
-                    {user ?
-                        budgetList.map((budget, index) => (
-                            /** index < 4 && **/
-                            <BudgetItem
-                                budget={budget}
-                                key={index}
-                            />
-                        )) :
-                        [1, 2, 3, 4].map((index) => (
-                            <div key={index} className="rounded-lg bg-slate-800 animate-pulse h-[150px]">
-
-                            </div>
-                        ))
-                    }
-                </div>
+            
+            {/* Tab Navigation */}
+            <div className="flex gap-4 mt-8 mb-6 border-b border-gray-700">
+                <button
+                    className={`pb-2 px-1 font-semibold transition-colors ${
+                        activeTab === 'overview' 
+                            ? 'text-primary border-b-2 border-primary' 
+                            : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('overview')}
+                >
+                    Overview
+                </button>
+                <button
+                    className={`pb-2 px-1 font-semibold transition-colors ${
+                        activeTab === 'calendar' 
+                            ? 'text-primary border-b-2 border-primary' 
+                            : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('calendar')}
+                >
+                    Calendar
+                </button>
+                <button
+                    className={`pb-2 px-1 font-semibold transition-colors ${
+                        activeTab === 'analytics' 
+                            ? 'text-primary border-b-2 border-primary' 
+                            : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('analytics')}
+                >
+                    Analytics
+                </button>
+                <button
+                    className={`pb-2 px-1 font-semibold transition-colors ${
+                        activeTab === 'categories' 
+                            ? 'text-primary border-b-2 border-primary' 
+                            : 'text-gray-400 hover:text-white'
+                    }`}
+                    onClick={() => setActiveTab('categories')}
+                >
+                    Categories
+                </button>
             </div>
+
+            {/* Tab Content */}
+            {activeTab === 'overview' && (
+                <>
+                    {/* Income and Savings Tracker */}
+                    <IncomeSavingsTracker 
+                        user={user} 
+                        refreshData={() => {
+                            getBudgetList();
+                            fetchMonthlyIncome();
+                        }} 
+                    />
+                    
+                    <CardInfo
+                        budgetList={budgetList}
+                    />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-3 mt-10 gap-5">
+                        {user ?
+                            <div className="md:col-span-2 flex flex-col gap-4">
+                                <BarChartDashboard
+                                    budgetList={budgetList}
+                                />
+
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <h2 className="text-lg font-bold">Latest Expenses</h2>
+                                    <ExpenseListTable
+                                        expensesList={expensesList}
+                                        refreshData={() => getBudgetList()}
+                                    />
+                                </div>
+
+                            </div> :
+                            <div className="md:col-span-2 flex flex-col gap-4">
+                                <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
+                                <div className="w-1/3 h-[20px] rounded-lg animate-pulse bg-slate-800"></div>
+                                <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
+                            </div>
+                        }
+                        <div className="grid gap-3">
+                            {user ?
+                                <h2 className="font-bold text-lg">Latest Budgets</h2> :
+                                <h2 className="w-1/2 h-[20px] rounded-lg animate-pulse bg-slate-800"></h2>
+                            }
+                            {user ?
+                                budgetList.slice(0, 4).map((budget, index) => (
+                                    <BudgetItem
+                                        budget={budget}
+                                        key={index}
+                                    />
+                                )) :
+                                [1, 2, 3, 4].map((index) => (
+                                    <div key={index} className="rounded-lg bg-slate-800 animate-pulse h-[150px]">
+
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Calendar Tab */}
+            {activeTab === 'calendar' && user && (
+                <ExpenseCalendar
+                    user={user}
+                    refreshData={() => {
+                        getBudgetList();
+                        getAllExpenses();
+                    }}
+                    categories={categories}
+                    monthlyIncome={monthlyIncome}
+                />
+            )}
+
+            {/* Analytics Tab */}
+            {activeTab === 'analytics' && user && (
+                <ExpenseAnalytics user={user} />
+            )}
+
+            {/* Categories Tab */}
+            {activeTab === 'categories' && user && (
+                <CategoriesManager 
+                    user={user} 
+                    refreshCategories={fetchCategories}
+                />
+            )}
         </div>
     )
 }
