@@ -12,3 +12,7 @@ Please be respectful and professional in all interactions.
 4. Write tests for new features
 5. Submit a pull request
 
+## Commit Message Guidelines
+- Use imperative mood
+- Keep messages concise and descriptive
+
