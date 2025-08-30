@@ -21,7 +21,9 @@ const Header = () => {
           alt='logo'
           width={140}
           height={100}
+          priority
           className='rounded-t-md bg-blue-400'
+          style={{ width: 'auto', height: 'auto' }}
         />
         {isSignedIn ?
           <span className="px-3"><UserButton /></span> :

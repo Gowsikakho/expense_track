@@ -35,11 +35,16 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         const endDate = moment(endOfMonth).format('YYYY-MM-DD')
 
         try {
-            const result = await db.select()
+            const result = await db.select({
+                id: Expenses.id,
+                name: Expenses.name,
+                amount: Expenses.amount,
+                budgetId: Expenses.budgetId,
+                date: Expenses.date
+            })
                 .from(Expenses)
                 .where(
                     and(
-                        eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress),
                         gte(Expenses.date, startDate),
                         lte(Expenses.date, endDate)
                     )
@@ -116,8 +121,8 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
     }
 
     const handleAddExpense = async () => {
-        if (!expenseName || !expenseAmount || !selectedCategory) {
-            toast.error('Please fill all fields')
+        if (!expenseName || !expenseAmount) {
+            toast.error('Please fill expense name and amount')
             return
         }
 
@@ -125,10 +130,10 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
             const result = await db.insert(Expenses).values({
                 name: expenseName,
                 amount: expenseAmount,
-                categoryId: parseInt(selectedCategory),
                 date: moment(selectedDate).format('YYYY-MM-DD'),
-                createdAt: moment().format('DD/MM/YYYY'),
-                createdBy: user.primaryEmailAddress?.emailAddress
+                createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
+                createdBy: user?.primaryEmailAddress?.emailAddress || 'unknown'
+                // categoryId: null // Optional - will be null if not provided
             })
 
             if (result) {
@@ -258,22 +263,25 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                                 onChange={(e) => setExpenseAmount(e.target.value)}
                             />
                         </div>
-                        <div className="grid gap-2">
-                            <label htmlFor="category">Category</label>
-                            <select
-                                id="category"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                            >
-                                <option value="">Select a category</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.icon} {category.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Temporarily hide category selection - will be enabled after database migration */}
+                        {false && (
+                            <div className="grid gap-2">
+                                <label htmlFor="category">Category</label>
+                                <select
+                                    id="category"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                >
+                                    <option value="">Select a category</option>
+                                    {categories.map((category) => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.icon} {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>

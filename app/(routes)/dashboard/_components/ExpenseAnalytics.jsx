@@ -26,38 +26,15 @@ const ExpenseAnalytics = ({ user }) => {
         const endOfMonth = moment(selectedMonth).endOf('month').format('YYYY-MM-DD')
 
         try {
-            // Fetch expenses with categories for pie chart
-            const categorizedExpenses = await db.select({
-                categoryId: Expenses.categoryId,
-                categoryName: Categories.name,
-                categoryIcon: Categories.icon,
-                categoryColor: Categories.color,
-                total: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number)
-            })
-            .from(Expenses)
-            .leftJoin(Categories, eq(Expenses.categoryId, Categories.id))
-            .where(
-                and(
-                    eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress),
-                    gte(Expenses.date, startOfMonth),
-                    lte(Expenses.date, endOfMonth)
-                )
-            )
-            .groupBy(Expenses.categoryId, Categories.name, Categories.icon, Categories.color)
-
-            // Process category data for pie chart
-            const pieData = categorizedExpenses.map(item => ({
-                name: item.categoryName || 'Uncategorized',
-                value: item.total,
-                icon: item.categoryIcon || '📌',
-                color: item.categoryColor || '#6b7280'
-            }))
-
+            // Temporarily disable category-based analytics since categoryId doesn't exist yet
+            // TODO: Re-enable after database migration adds categoryId column
+            
+            // For now, just show a placeholder for category data
+            const pieData = []
             setCategoryData(pieData)
 
-            // Calculate total expenses
-            const total = pieData.reduce((sum, item) => sum + item.value, 0)
-            setTotalExpenses(total)
+            // Calculate total expenses from daily data
+            let totalExpensesAmount = 0
 
             // Fetch daily expenses for timeline
             const dailyExpenses = await db.select({
@@ -67,7 +44,6 @@ const ExpenseAnalytics = ({ user }) => {
             .from(Expenses)
             .where(
                 and(
-                    eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress),
                     gte(Expenses.date, startOfMonth),
                     lte(Expenses.date, endOfMonth)
                 )
@@ -91,6 +67,10 @@ const ExpenseAnalytics = ({ user }) => {
             }
 
             setTimelineData(timelineArray)
+            
+            // Calculate total expenses from timeline data
+            totalExpensesAmount = timelineArray.reduce((sum, day) => sum + day.amount, 0)
+            setTotalExpenses(totalExpensesAmount)
         } catch (error) {
             console.error('Error fetching analytics data:', error)
         }
@@ -251,8 +231,14 @@ const ExpenseAnalytics = ({ user }) => {
                                     tick={{ fontSize: 12 }}
                                 />
                                 <YAxis 
+                                    type="number"
+                                    domain={[0, 'dataMax']}
+                                    allowDecimals={false}
                                     stroke="#9CA3AF"
                                     tick={{ fontSize: 12 }}
+                                    axisLine={true}
+                                    tickLine={true}
+                                    orientation="left"
                                 />
                                 <Tooltip content={<BarTooltip />} />
                                 <Bar 

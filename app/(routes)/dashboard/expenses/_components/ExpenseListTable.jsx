@@ -49,7 +49,7 @@ const ExpenseListTable = ({ expensesList, refreshData }) => {
                 <div key={index} className="grid grid-cols-4 bg-slate-800 text-slate-300 font-medium p-3">
                     <h2>{expenses.name}</h2>
                     <h2>{expenses.amount}</h2>
-                    <h2>{expenses.createdAt}</h2>
+                    <h2>{expenses.date}</h2>
                     <h2 className="ml-3 mt-[2px] md:mt-0">
                         <FaTrashCan
                             className="text-red-600 cursor-pointer text-[14px] md:text-[17px]"

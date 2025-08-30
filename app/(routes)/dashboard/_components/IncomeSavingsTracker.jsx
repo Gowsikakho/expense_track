@@ -30,7 +30,12 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
     const fetchIncomeAndSavings = async () => {
         try {
             // Fetch current month income
-            const incomeResult = await db.select()
+            const incomeResult = await db.select({
+                id: Income.id,
+                amount: Income.amount,
+                month: Income.month,
+                createdBy: Income.createdBy
+            })
                 .from(Income)
                 .where(
                     and(
@@ -45,10 +50,16 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
             }
 
             // Fetch all savings
-            const savingsResult = await db.select()
+            const savingsResult = await db.select({
+                id: Savings.id,
+                amount: Savings.amount,
+                month: Savings.month,
+                isRollover: Savings.isRollover,
+                createdBy: Savings.createdBy
+            })
                 .from(Savings)
                 .where(eq(Savings.createdBy, user.primaryEmailAddress?.emailAddress))
-                .orderBy(desc(Savings.createdAt))
+                .orderBy(desc(Savings.id))
 
             const total = savingsResult.reduce((sum, saving) => sum + Number(saving.amount), 0)
             setTotalSavings(total)
@@ -63,11 +74,12 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
         const endOfMonth = moment().endOf('month').format('YYYY-MM-DD')
 
         try {
-            const result = await db.select()
+            const result = await db.select({
+                amount: Expenses.amount
+            })
                 .from(Expenses)
                 .where(
                     and(
-                        eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress),
                         gte(Expenses.date, startOfMonth),
                         lte(Expenses.date, endOfMonth)
                     )
@@ -88,7 +100,10 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
 
         try {
             // Check if income already exists for this month
-            const existingIncome = await db.select()
+            const existingIncome = await db.select({
+                id: Income.id,
+                amount: Income.amount
+            })
                 .from(Income)
                 .where(
                     and(

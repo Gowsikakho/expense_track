@@ -34,7 +34,11 @@ const page = () => {
 
     const getBudgetList = async () => {
         const result = await db.select({
-            ...getTableColumns(Budgets),
+            id: Budgets.id,
+            name: Budgets.name,
+            amount: Budgets.amount,
+            icon: Budgets.icon,
+            createdBy: Budgets.createdBy,
             totalSpend: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number),
             totalItem: sql`count(${Expenses.id})`.mapWith(Number),
         }).from(Budgets)
@@ -52,11 +56,8 @@ const page = () => {
             id: Expenses.id,
             name: Expenses.name,
             amount: Expenses.amount,
-            createdAt: Expenses.createdAt,
-            date: Expenses.date,
-            categoryId: Expenses.categoryId
+            date: Expenses.date
         }).from(Expenses)
-            .where(eq(Expenses.createdBy, user.primaryEmailAddress?.emailAddress))
             .orderBy(desc(Expenses.id))
             .limit(10);
 
@@ -65,7 +66,13 @@ const page = () => {
 
     const fetchCategories = async () => {
         try {
-            const result = await db.select()
+            const result = await db.select({
+                id: Categories.id,
+                name: Categories.name,
+                icon: Categories.icon,
+                color: Categories.color,
+                createdBy: Categories.createdBy
+            })
                 .from(Categories)
                 .where(eq(Categories.createdBy, user.primaryEmailAddress?.emailAddress));
             setCategories(result);
@@ -77,7 +84,12 @@ const page = () => {
     const fetchMonthlyIncome = async () => {
         try {
             const currentMonth = moment().format('YYYY-MM');
-            const result = await db.select()
+            const result = await db.select({
+                id: Income.id,
+                amount: Income.amount,
+                month: Income.month,
+                createdBy: Income.createdBy
+            })
                 .from(Income)
                 .where(
                     and(

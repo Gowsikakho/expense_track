@@ -20,7 +20,11 @@ const page = () => {
 
     const getBudgetList = async () => {
         const result = await db.select({
-            ...getTableColumns(Budgets),
+            id: Budgets.id,
+            name: Budgets.name,
+            amount: Budgets.amount,
+            icon: Budgets.icon,
+            createdBy: Budgets.createdBy,
             totalSpend: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number),
             totalItem: sql`count(${Expenses.id})`.mapWith(Number),
         }).from(Budgets)
@@ -38,7 +42,7 @@ const page = () => {
             id: Expenses.id,
             name: Expenses.name,
             amount: Expenses.amount,
-            createdAt: Expenses.createdAt
+            date: Expenses.date
         }).from(Budgets)
             .rightJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
             .where(eq(Budgets.createdBy, user.primaryEmailAddress?.emailAddress))

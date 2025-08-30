@@ -23,7 +23,14 @@ const BarChartDashboard = ({ budgetList }) => {
                         className='text-xs md:text-sm lg:text-[16px] font-semibold mt-2'
                         dataKey="name"
                     />
-                    <YAxis />
+                    <YAxis 
+                        type="number"
+                        domain={[0, 'dataMax']}
+                        allowDecimals={false}
+                        axisLine={true}
+                        tickLine={true}
+                        orientation="left"
+                    />
                     <Tooltip />
                     <Legend />
                     <Bar

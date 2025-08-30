@@ -32,7 +32,13 @@ const CategoriesManager = ({ user, refreshCategories }) => {
 
     const fetchCategories = async () => {
         try {
-            const result = await db.select()
+            const result = await db.select({
+                id: Categories.id,
+                name: Categories.name,
+                icon: Categories.icon,
+                color: Categories.color,
+                createdBy: Categories.createdBy
+            })
                 .from(Categories)
                 .where(eq(Categories.createdBy, user.primaryEmailAddress?.emailAddress))
 

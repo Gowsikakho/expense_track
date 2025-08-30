@@ -46,7 +46,11 @@ const ExpensesScreen = ({ params }) => {
 
     const getBudgetInfo = async () => {
         const result = await db.select({
-            ...getTableColumns(Budgets),
+            id: Budgets.id,
+            name: Budgets.name,
+            amount: Budgets.amount,
+            icon: Budgets.icon,
+            createdBy: Budgets.createdBy,
             totalSpend: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number),
             totalItem: sql`count(${Expenses.id})`.mapWith(Number),
         }).from(Budgets)
@@ -66,7 +70,13 @@ const ExpensesScreen = ({ params }) => {
     }
 
     const getExpensesList = async () => {
-        const result = await db.select().from(Expenses)
+        const result = await db.select({
+            id: Expenses.id,
+            name: Expenses.name,
+            amount: Expenses.amount,
+            budgetId: Expenses.budgetId,
+            date: Expenses.date
+        }).from(Expenses)
             .where(eq(Expenses.budgetId, params.id))
             .orderBy(desc(Expenses.id));
 
