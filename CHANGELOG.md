@@ -6,4 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial project setup
+- Budget management features
+- Expense tracking functionality
 
