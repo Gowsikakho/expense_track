@@ -9,3 +9,6 @@ All notable changes to this project will be documented in this file.
 - Budget management features
 - Expense tracking functionality
 
+### Changed
+- Improved UI responsiveness
+
