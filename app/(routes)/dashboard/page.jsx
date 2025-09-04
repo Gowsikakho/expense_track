@@ -185,46 +185,35 @@ const page = () => {
                     />
                     
                     <div className="grid grid-cols-1 lg:grid-cols-3 mt-10 gap-5">
-                        {user ?
-                            <div className="md:col-span-2 flex flex-col gap-4">
-                                <BarChartDashboard
-                                    budgetList={budgetList}
-                                />
-
-                                <div className="flex flex-col gap-1 mt-2">
-                                    <h2 className="text-lg font-bold">Latest Expenses</h2>
-                                    <ExpenseListTable
-                                        expensesList={expensesList}
-                                        refreshData={() => getBudgetList()}
+                        {user && (
+                            <>
+                                <div className="md:col-span-2 flex flex-col gap-4">
+                                    <BarChartDashboard
+                                        budgetList={budgetList}
                                     />
                                 </div>
-
-                            </div> :
-                            <div className="md:col-span-2 flex flex-col gap-4">
-                                <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
-                                <div className="w-1/3 h-[20px] rounded-lg animate-pulse bg-slate-800"></div>
-                                <div className="w-full h-[350px] bg-slate-800 rounded-lg animate-pulse"></div>
-                            </div>
-                        }
-                        <div className="grid gap-3">
-                            {user ?
-                                <h2 className="font-bold text-lg">Latest Budgets</h2> :
-                                <h2 className="w-1/2 h-[20px] rounded-lg animate-pulse bg-slate-800"></h2>
-                            }
-                            {user ?
-                                budgetList.slice(0, 4).map((budget, index) => (
-                                    <BudgetItem
-                                        budget={budget}
-                                        key={index}
-                                    />
-                                )) :
-                                [1, 2, 3, 4].map((index) => (
-                                    <div key={index} className="rounded-lg bg-slate-800 animate-pulse h-[150px]">
-
-                                    </div>
-                                ))
-                            }
-                        </div>
+                                <div className="grid gap-3">
+                                    <h2 className="font-bold text-lg">Active Budgets</h2>
+                                    {budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).length > 0 ? (
+                                        budgetList
+                                            .filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0)
+                                            .slice(0, 4)
+                                            .map((budget, index) => (
+                                                <BudgetItem
+                                                    budget={budget}
+                                                    key={index}
+                                                />
+                                            ))
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-400">
+                                            <div className="text-4xl mb-2">💰</div>
+                                            <p>No active budgets</p>
+                                            <p className="text-sm">All budgets are fully used</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </>
             )}

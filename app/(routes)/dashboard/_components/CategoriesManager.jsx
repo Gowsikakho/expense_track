@@ -1,278 +1,194 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { db } from '@/utils/dbConfig'
-import { Categories } from '@/utils/schema'
+import { Expenses } from '@/utils/schema'
 import { eq } from 'drizzle-orm'
-import { toast } from 'sonner'
-import { Plus, Edit2, Trash2, Tag } from 'lucide-react'
-import EmojiPicker from 'emoji-picker-react'
+import { FaRupeeSign } from 'react-icons/fa'
 
-const CategoriesManager = ({ user, refreshCategories }) => {
-    const [categories, setCategories] = useState([])
-    const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [categoryName, setCategoryName] = useState('')
-    const [categoryIcon, setCategoryIcon] = useState('📁')
-    const [categoryColor, setCategoryColor] = useState('#4845d2')
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-    const [editingCategory, setEditingCategory] = useState(null)
-
-    const predefinedColors = [
-        '#4845d2', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6',
-        '#ec4899', '#06b6d4', '#10b981', '#f97316', '#3b82f6'
-    ]
+const CategoriesManager = ({ user }) => {
+    const [categoryData, setCategoryData] = useState([])
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         if (user) {
-            fetchCategories()
+            fetchCategoryAnalysis()
         }
     }, [user])
 
-    const fetchCategories = async () => {
+    const fetchCategoryAnalysis = async () => {
         try {
+            setLoading(true)
+            
+            // Fetch all personal expenses (not budget-related) for the user
             const result = await db.select({
-                id: Categories.id,
-                name: Categories.name,
-                icon: Categories.icon,
-                color: Categories.color,
-                createdBy: Categories.createdBy
+                name: Expenses.name,
+                amount: Expenses.amount,
+                date: Expenses.date
             })
-                .from(Categories)
-                .where(eq(Categories.createdBy, user.primaryEmailAddress?.emailAddress))
+            .from(Expenses)
+            .where(eq(Expenses.budgetId, null)) // Only personal expenses, not budget-related
 
-            setCategories(result)
-        } catch (error) {
-            console.error('Error fetching categories:', error)
-        }
-    }
-
-    const handleSaveCategory = async () => {
-        if (!categoryName.trim()) {
-            toast.error('Please enter a category name')
-            return
-        }
-
-        try {
-            if (editingCategory) {
-                // Update existing category
-                await db.update(Categories)
-                    .set({
+            // Group expenses by category name and calculate totals
+            const categoryGroups = result.reduce((acc, expense) => {
+                const categoryName = expense.name || 'Uncategorized'
+                
+                if (!acc[categoryName]) {
+                    acc[categoryName] = {
                         name: categoryName,
-                        icon: categoryIcon,
-                        color: categoryColor
-                    })
-                    .where(eq(Categories.id, editingCategory.id))
+                        totalAmount: 0,
+                        expenseCount: 0,
+                        expenses: []
+                    }
+                }
+                
+                acc[categoryName].totalAmount += Number(expense.amount) || 0
+                acc[categoryName].expenseCount += 1
+                acc[categoryName].expenses.push(expense)
+                
+                return acc
+            }, {})
 
-                toast.success('Category updated successfully!')
-            } else {
-                // Create new category
-                await db.insert(Categories).values({
-                    name: categoryName,
-                    icon: categoryIcon,
-                    color: categoryColor,
-                    createdBy: user.primaryEmailAddress?.emailAddress
-                })
+            // Convert to array and sort by total amount (descending)
+            const sortedCategories = Object.values(categoryGroups)
+                .sort((a, b) => b.totalAmount - a.totalAmount)
 
-                toast.success('Category created successfully!')
+            setCategoryData(sortedCategories)
+        } catch (error) {
+            console.error('Error fetching category analysis:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const getCategoryIcon = (categoryName) => {
+        // Simple icon mapping based on category name
+        const iconMap = {
+            'Food': '🍔',
+            'Groceries': '🛒',
+            'Transportation': '🚗',
+            'Fuel': '⛽',
+            'Gasoline': '⛽',
+            'Healthcare': '🏥',
+            'Medical': '💊',
+            'Entertainment': '🎮',
+            'Shopping': '🛍️',
+            'Bills': '💡',
+            'Utilities': '⚡',
+            'Rent': '🏠',
+            'Housing': '🏠',
+            'Education': '📚',
+            'Books': '📖',
+            'Gym': '💪',
+            'Fitness': '🏃',
+            'Travel': '✈️',
+            'Dining': '🍽️',
+            'Restaurant': '🍴',
+            'Coffee': '☕',
+            'Clothing': '👕',
+            'Electronics': '📱',
+            'Home': '🏡',
+            'Furniture': '🪑',
+            'Maintenance': '🔧',
+            'Insurance': '🛡️',
+            'Taxes': '💰',
+            'Investment': '📈',
+            'Savings': '💎'
+        }
+
+        // Find the best matching icon
+        for (const [key, icon] of Object.entries(iconMap)) {
+            if (categoryName.toLowerCase().includes(key.toLowerCase())) {
+                return icon
             }
-
-            resetForm()
-            fetchCategories()
-            refreshCategories()
-        } catch (error) {
-            console.error('Error saving category:', error)
-            toast.error('Failed to save category')
         }
+        
+        return '📁' // Default icon
     }
 
-    const handleDeleteCategory = async (categoryId) => {
-        if (!confirm('Are you sure you want to delete this category?')) {
-            return
-        }
-
-        try {
-            await db.delete(Categories).where(eq(Categories.id, categoryId))
-            toast.success('Category deleted successfully!')
-            fetchCategories()
-            refreshCategories()
-        } catch (error) {
-            console.error('Error deleting category:', error)
-            toast.error('Failed to delete category')
-        }
-    }
-
-    const handleEditCategory = (category) => {
-        setEditingCategory(category)
-        setCategoryName(category.name)
-        setCategoryIcon(category.icon || '📁')
-        setCategoryColor(category.color || '#4845d2')
-        setIsDialogOpen(true)
-    }
-
-    const resetForm = () => {
-        setCategoryName('')
-        setCategoryIcon('📁')
-        setCategoryColor('#4845d2')
-        setEditingCategory(null)
-        setIsDialogOpen(false)
-        setShowEmojiPicker(false)
-    }
-
-    const onEmojiClick = (emojiData) => {
-        setCategoryIcon(emojiData.emoji)
-        setShowEmojiPicker(false)
-    }
-
-    // Create default categories if none exist
-    useEffect(() => {
-        if (user && categories.length === 0) {
-            createDefaultCategories()
-        }
-    }, [user, categories])
-
-    const createDefaultCategories = async () => {
-        const defaultCategories = [
-            { name: 'Food & Dining', icon: '🍔', color: '#ef4444' },
-            { name: 'Transportation', icon: '🚗', color: '#3b82f6' },
-            { name: 'Shopping', icon: '🛍️', color: '#8b5cf6' },
-            { name: 'Entertainment', icon: '🎮', color: '#f59e0b' },
-            { name: 'Bills & Utilities', icon: '💡', color: '#06b6d4' },
-            { name: 'Healthcare', icon: '🏥', color: '#22c55e' },
-            { name: 'Education', icon: '📚', color: '#4845d2' },
-            { name: 'Others', icon: '📌', color: '#6b7280' }
+    const getCategoryColor = (index) => {
+        const colors = [
+            '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
+            '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
         ]
+        return colors[index % colors.length]
+    }
 
-        try {
-            for (const category of defaultCategories) {
-                await db.insert(Categories).values({
-                    ...category,
-                    createdBy: user.primaryEmailAddress?.emailAddress
-                })
-            }
-            fetchCategories()
-        } catch (error) {
-            console.error('Error creating default categories:', error)
-        }
+    if (loading) {
+        return (
+            <div className="space-y-4">
+                <h3 className="font-bold text-lg">Expense Categories</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="h-24 bg-gray-800 rounded-lg animate-pulse"></div>
+                    ))}
+                </div>
+            </div>
+        )
     }
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg">Expense Categories</h3>
-                <Button size="sm" onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Category
-                </Button>
+            <div className="mb-6">
+                <h3 className="font-bold text-lg mb-2">Expense Categories</h3>
+                <p className="text-gray-400 text-sm">
+                    Categories automatically generated from your personal expense data
+                </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.map((category) => (
-                    <div
-                        key={category.id}
-                        className="p-4 border rounded-lg bg-black hover:bg-gray-900 transition-colors"
-                        style={{ borderColor: category.color }}
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-2xl">{category.icon}</span>
-                            <div className="flex gap-1">
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => handleEditCategory(category)}
-                                >
-                                    <Edit2 className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-red-500 hover:text-red-600"
-                                    onClick={() => handleDeleteCategory(category.id)}
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="text-sm font-medium">{category.name}</div>
-                    </div>
-                ))}
-            </div>
-
-            <Dialog open={isDialogOpen} onOpenChange={(open) => !open && resetForm()}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {editingCategory ? 'Edit Category' : 'Create New Category'}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {editingCategory ? 'Update category details' : 'Add a new expense category'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <label htmlFor="name">Category Name</label>
-                            <Input
-                                id="name"
-                                placeholder="e.g., Groceries"
-                                value={categoryName}
-                                onChange={(e) => setCategoryName(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <label>Icon</label>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-20"
-                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                >
-                                    <span className="text-2xl">{categoryIcon}</span>
-                                </Button>
-                                <div className="text-sm text-gray-400 flex items-center">
-                                    Click to choose an icon
+            {categoryData.length === 0 ? (
+                <div className="text-center py-12">
+                    <div className="text-6xl mb-4">📊</div>
+                    <h4 className="text-xl font-semibold mb-2">No Personal Expenses Found</h4>
+                    <p className="text-gray-400">
+                        Start adding personal expenses to see automatic category analysis
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {categoryData.map((category, index) => (
+                        <div
+                            key={category.name}
+                            className="p-4 border rounded-lg bg-black hover:bg-gray-900 transition-colors"
+                            style={{ borderColor: getCategoryColor(index) }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{getCategoryIcon(category.name)}</span>
+                                    <div>
+                                        <div className="font-semibold">{category.name}</div>
+                                        <div className="text-sm text-gray-400">
+                                            {category.expenseCount} expense{category.expenseCount > 1 ? 's' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-lg font-bold text-red-400">
+                                        <FaRupeeSign className="inline text-sm mr-1" />
+                                        {category.totalAmount.toLocaleString()}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        {((category.totalAmount / categoryData.reduce((sum, cat) => sum + cat.totalAmount, 0)) * 100).toFixed(1)}% of total
+                                    </div>
                                 </div>
                             </div>
-                            {showEmojiPicker && (
-                                <div className="absolute z-50">
-                                    <EmojiPicker
-                                        onEmojiClick={onEmojiClick}
-                                        theme="dark"
-                                        height={350}
-                                        width={300}
-                                    />
-                                </div>
-                            )}
                         </div>
+                    ))}
+                </div>
+            )}
 
-                        <div className="grid gap-2">
-                            <label>Color</label>
-                            <div className="flex gap-2 flex-wrap">
-                                {predefinedColors.map((color) => (
-                                    <button
-                                        key={color}
-                                        className={`w-10 h-10 rounded-lg border-2 ${
-                                            categoryColor === color ? 'border-white' : 'border-transparent'
-                                        }`}
-                                        style={{ backgroundColor: color }}
-                                        onClick={() => setCategoryColor(color)}
-                                    />
-                                ))}
-                            </div>
+            {categoryData.length > 0 && (
+                <div className="mt-6 p-4 border rounded-lg bg-gray-900">
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-green-400 mb-2">
+                            <FaRupeeSign className="inline text-sm mr-1" />
+                            {categoryData.reduce((sum, cat) => sum + cat.totalAmount, 0).toLocaleString()}
+                        </div>
+                        <div className="text-gray-400">
+                            Total personal expenses across {categoryData.length} categories
                         </div>
                     </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={handleSaveCategory}>
-                            {editingCategory ? 'Update' : 'Create'} Category
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                </div>
+            )}
         </div>
     )
 }

@@ -46,7 +46,9 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 .where(
                     and(
                         gte(Expenses.date, startDate),
-                        lte(Expenses.date, endDate)
+                        lte(Expenses.date, endDate),
+                        // Only show personal expenses (not budget-related expenses)
+                        eq(Expenses.budgetId, null)
                     )
                 )
 
@@ -132,12 +134,12 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 amount: expenseAmount,
                 date: moment(selectedDate).format('YYYY-MM-DD'),
                 createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
-                createdBy: user?.primaryEmailAddress?.emailAddress || 'unknown'
-                // categoryId: null // Optional - will be null if not provided
+                createdBy: user?.primaryEmailAddress?.emailAddress || 'unknown',
+                budgetId: null // Ensure this is a personal expense, not budget-related
             })
 
             if (result) {
-                toast.success('Expense added successfully!')
+                toast.success('Personal expense added successfully!')
                 setExpenseName('')
                 setExpenseAmount('')
                 setSelectedCategory('')
@@ -156,7 +158,7 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
     return (
         <div className="border bg-black rounded-lg p-5">
             <div className="flex justify-between items-center mb-5">
-                <h2 className="font-bold text-xl">Expense Calendar</h2>
+                <h2 className="font-bold text-xl">Personal Expenses Calendar</h2>
                 <div className="flex items-center gap-4">
                     <div className="text-sm">
                         <span className="text-gray-400">Remaining: </span>
@@ -238,9 +240,9 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add Expense for {selectedDate?.toLocaleDateString()}</DialogTitle>
+                        <DialogTitle>Add Personal Expense for {selectedDate?.toLocaleDateString()}</DialogTitle>
                         <DialogDescription>
-                            Add a new expense for this date
+                            Add a new personal expense for this date (not related to any budget)
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
