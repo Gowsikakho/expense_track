@@ -1,9 +1,10 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import Modal from '@/components/ui/modal'
+import ExpenseCard from '@/components/ui/expense-card'
 import { db } from '@/utils/dbConfig'
 import { Expenses, Categories } from '@/utils/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
@@ -14,16 +15,23 @@ import moment from 'moment'
 const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState(null)
+    const [isModalOpen, setIsModalOpen] = useState(false)
     const [monthExpenses, setMonthExpenses] = useState([])
-    const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [expenseName, setExpenseName] = useState('')
     const [expenseAmount, setExpenseAmount] = useState('')
+    const [expenseNotes, setExpenseNotes] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('')
+    const [expenseDate, setExpenseDate] = useState(moment().format('YYYY-MM-DD'))
     const [dailyExpenses, setDailyExpenses] = useState({})
+    const [isAddingExpense, setIsAddingExpense] = useState(false)
+    const [isDeletingExpense, setIsDeletingExpense] = useState(false)
 
     useEffect(() => {
         if (user) {
+            console.log('User found, fetching expenses...')
             fetchMonthExpenses()
+        } else {
+            console.log('No user found')
         }
     }, [currentDate, user])
 
@@ -35,34 +43,50 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         const endDate = moment(endOfMonth).format('YYYY-MM-DD')
 
         try {
+            
+            // First, let's try without any filters to see if we get any data
+            const allExpenses = await db.select().from(Expenses)
+            console.log('All expenses without filters:', allExpenses)
+            
+            // Debug: Check if any expenses have budgetId = null
+            const personalExpenses = allExpenses.filter(expense => expense.budgetId === null)
+            console.log('Personal expenses (budgetId = null):', personalExpenses)
+            
+            // Try without budgetId filter first
             const result = await db.select({
                 id: Expenses.id,
                 name: Expenses.name,
                 amount: Expenses.amount,
                 budgetId: Expenses.budgetId,
-                date: Expenses.date
+                date: Expenses.date,
+                notes: Expenses.notes
             })
                 .from(Expenses)
                 .where(
                     and(
                         gte(Expenses.date, startDate),
-                        lte(Expenses.date, endDate),
-                        // Only show personal expenses (not budget-related expenses)
-                        eq(Expenses.budgetId, null)
+                        lte(Expenses.date, endDate)
+                        // Temporarily remove budgetId filter to test
+                        // eq(Expenses.budgetId, null)
                     )
                 )
+            
+            console.log('Filtered result:', result)
 
             setMonthExpenses(result)
             
             // Group expenses by date
             const grouped = result.reduce((acc, expense) => {
                 const date = expense.date
+                console.log('Processing expense:', expense.name, 'for date:', date)
                 if (!acc[date]) {
                     acc[date] = []
                 }
                 acc[date].push(expense)
                 return acc
             }, {})
+            
+            console.log('Final grouped expenses:', grouped)
             
             setDailyExpenses(grouped)
         } catch (error) {
@@ -99,12 +123,24 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         setCurrentDate(newDate)
     }
 
-    const handleDateClick = (day) => {
+    const handleDateClick = async (day) => {
         if (day) {
             const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
             setSelectedDate(clickedDate)
-            setIsDialogOpen(true)
+            setIsModalOpen(true)
+            
+            // Set the form date to the clicked date
+            const clickedDateStr = moment(clickedDate).format('YYYY-MM-DD')
+            setExpenseDate(clickedDateStr)
+            
+            // Refresh data to ensure we have the latest expenses
+            await fetchMonthExpenses()
         }
+    }
+
+    const closeModal = () => {
+        setIsModalOpen(false)
+        setSelectedDate(null)
     }
 
     const getDayExpenses = (day) => {
@@ -123,37 +159,85 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
     }
 
     const handleAddExpense = async () => {
-        if (!expenseName || !expenseAmount) {
-            toast.error('Please fill expense name and amount')
+        if (!expenseName || !expenseAmount || !expenseDate) {
+            toast.error('Please fill expense name, amount, and date')
             return
         }
 
+        setIsAddingExpense(true)
+
         try {
+            console.log('Adding expense with data:', {
+                name: expenseName,
+                amount: expenseAmount,
+                date: expenseDate,
+                notes: expenseNotes,
+                createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
+                budgetId: null
+            })
+            
             const result = await db.insert(Expenses).values({
                 name: expenseName,
                 amount: expenseAmount,
-                date: moment(selectedDate).format('YYYY-MM-DD'),
+                date: expenseDate, // Use the selected date
+                notes: expenseNotes || null,
                 createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
-                createdBy: user?.primaryEmailAddress?.emailAddress || 'unknown',
                 budgetId: null // Ensure this is a personal expense, not budget-related
             })
-
+            
             if (result) {
+                console.log('Expense added successfully:', result)
                 toast.success('Personal expense added successfully!')
                 setExpenseName('')
                 setExpenseAmount('')
+                setExpenseNotes('')
                 setSelectedCategory('')
-                setIsDialogOpen(false)
-                fetchMonthExpenses()
+                setExpenseDate(moment().format('YYYY-MM-DD')) // Reset to today's date
+                // Refresh data immediately
+                console.log('Refreshing data after adding expense...')
+                await fetchMonthExpenses()
                 refreshData()
+                // Force re-render to update remaining budget
+                setMonthExpenses(prev => [...prev])
+                console.log('Data refresh completed')
             }
         } catch (error) {
             console.error('Error adding expense:', error)
             toast.error('Failed to add expense')
+        } finally {
+            setIsAddingExpense(false)
         }
     }
 
-    const remainingBudget = monthlyIncome - getMonthTotal()
+    const getRemainingBudget = () => {
+        return monthlyIncome - getMonthTotal()
+    }
+
+    const handleDeleteExpense = async (expenseId) => {
+        if (!confirm('Are you sure you want to delete this expense?')) {
+            return
+        }
+
+        setIsDeletingExpense(true)
+
+        try {
+            const result = await db.delete(Expenses).where(eq(Expenses.id, expenseId))
+            
+            if (result) {
+                toast.success('Expense deleted successfully!')
+                // Refresh data immediately
+                await fetchMonthExpenses()
+                refreshData()
+                // Force re-render to update remaining budget
+                setMonthExpenses(prev => [...prev])
+            }
+        } catch (error) {
+            console.error('Error deleting expense:', error)
+            toast.error('Failed to delete expense')
+        } finally {
+            setIsDeletingExpense(false)
+        }
+    }
 
     return (
         <div className="border bg-black rounded-lg p-5">
@@ -162,9 +246,9 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 <div className="flex items-center gap-4">
                     <div className="text-sm">
                         <span className="text-gray-400">Remaining: </span>
-                        <span className={`font-bold ${remainingBudget >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <span className={`font-bold ${getRemainingBudget() >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             <FaRupeeSign className="inline text-sm" />
-                            {Math.abs(remainingBudget)}
+                            {Math.abs(getRemainingBudget())}
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -191,6 +275,73 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 </div>
             </div>
 
+            {/* Add Expense Form - Moved outside calendar */}
+            <div className="mb-6 p-4 border border-gray-700 rounded-lg bg-gray-900">
+                <h3 className="font-semibold text-lg mb-4">Add New Expense</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Expense Name</label>
+                        <Input
+                            placeholder="e.g., Groceries, Fuel, etc."
+                            value={expenseName}
+                            onChange={(e) => setExpenseName(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Amount</label>
+                        <Input
+                            type="number"
+                            placeholder="0"
+                            value={expenseAmount}
+                            onChange={(e) => setExpenseAmount(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Date</label>
+                        <Input
+                            type="date"
+                            value={expenseDate}
+                            onChange={(e) => setExpenseDate(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Category</label>
+                        <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                        >
+                            <option value="">Select a category</option>
+                            <option value="Food">🍽️ Food</option>
+                            <option value="Transport">🚗 Transport</option>
+                            <option value="Entertainment">🎬 Entertainment</option>
+                            <option value="Shopping">🛍️ Shopping</option>
+                            <option value="Health">🏥 Health</option>
+                            <option value="Utilities">⚡ Utilities</option>
+                            <option value="Other">📝 Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
+                        <Input
+                            placeholder="Additional notes..."
+                            value={expenseNotes}
+                            onChange={(e) => setExpenseNotes(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <div className="mt-4">
+                    <Button 
+                        onClick={handleAddExpense}
+                        disabled={!expenseName || !expenseAmount || !expenseDate || isAddingExpense}
+                        className="w-full md:w-auto"
+                    >
+                        {isAddingExpense ? 'Adding...' : 'Add Expense'}
+                    </Button>
+                </div>
+            </div>
+
+            {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div key={day} className="text-center text-sm font-semibold text-gray-400 py-2">
@@ -210,23 +361,25 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                         <div
                             key={index}
                             className={`
-                                min-h-[80px] p-2 border rounded-lg cursor-pointer transition-all
-                                ${day ? 'hover:bg-gray-800' : ''}
-                                ${isToday ? 'bg-primary/20 border-primary' : 'border-gray-700'}
+                                min-h-[80px] p-2 flex flex-col items-center justify-center 
+                                rounded-lg cursor-pointer transition-all duration-200
+                                ${day ? 'bg-gray-800 hover:bg-gray-700 hover:scale-105 active:scale-95' : ''}
+                                ${isToday ? 'bg-blue-600 hover:bg-blue-500' : ''}
+                                ${!day ? 'invisible' : ''}
                             `}
                             onClick={() => handleDateClick(day)}
                         >
                             {day && (
                                 <>
-                                    <div className="text-sm font-semibold mb-1">{day}</div>
+                                    <div className="text-white font-semibold text-sm mb-1">{day}</div>
                                     {dayTotal > 0 && (
-                                        <div className="text-xs text-red-400">
+                                        <div className="text-xs text-green-400 font-medium">
                                             <FaRupeeSign className="inline text-xs" />
                                             {dayTotal}
                                         </div>
                                     )}
                                     {dayExpenses.length > 0 && (
-                                        <div className="text-xs text-gray-400 mt-1">
+                                        <div className="text-xs text-gray-300 mt-1">
                                             {dayExpenses.length} expense{dayExpenses.length > 1 ? 's' : ''}
                                         </div>
                                     )}
@@ -237,62 +390,50 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 })}
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Personal Expense for {selectedDate?.toLocaleDateString()}</DialogTitle>
-                        <DialogDescription>
-                            Add a new personal expense for this date (not related to any budget)
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <label htmlFor="name">Expense Name</label>
-                            <Input
-                                id="name"
-                                placeholder="e.g., Groceries, Fuel, etc."
-                                value={expenseName}
-                                onChange={(e) => setExpenseName(e.target.value)}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <label htmlFor="amount">Amount</label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                placeholder="0"
-                                value={expenseAmount}
-                                onChange={(e) => setExpenseAmount(e.target.value)}
-                            />
-                        </div>
-                        {/* Temporarily hide category selection - will be enabled after database migration */}
-                        {false && (
-                            <div className="grid gap-2">
-                                <label htmlFor="category">Category</label>
-                                <select
-                                    id="category"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
-                                >
-                                    <option value="">Select a category</option>
-                                    {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>
-                                            {category.icon} {category.name}
-                                        </option>
-                                    ))}
-                                </select>
+            {/* Modal for displaying expenses */}
+            <Modal 
+                isOpen={isModalOpen} 
+                onClose={closeModal}
+                title={selectedDate ? `Expenses for ${selectedDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                })}` : ''}
+                className="max-w-lg"
+            >
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                    {selectedDate && (() => {
+                        const dateStr = moment(selectedDate).format('YYYY-MM-DD')
+                        const dayExpenses = dailyExpenses[dateStr] || []
+                        
+                        console.log('Modal - Selected date:', selectedDate)
+                        console.log('Modal - Looking for date string:', dateStr)
+                        console.log('Modal - Available dates in dailyExpenses:', Object.keys(dailyExpenses))
+                        console.log('Modal - Found expenses for this date:', dayExpenses)
+                        
+                        
+                        return dayExpenses.length > 0 ? (
+                            <div className="space-y-3">
+                                {dayExpenses.map((expense, idx) => (
+                                    <ExpenseCard 
+                                        key={idx} 
+                                        expense={expense} 
+                                        onDelete={handleDeleteExpense}
+                                        isDeleting={isDeletingExpense}
+                                    />
+                                ))}
                             </div>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={handleAddExpense}>Add Expense</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <div className="text-lg font-medium mb-2">No expenses on this date</div>
+                                <div className="text-sm">Add an expense using the form above</div>
+                            </div>
+                        )
+                    })()}
+                </div>
+            </Modal>
+
         </div>
     )
 }

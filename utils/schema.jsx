@@ -11,10 +11,11 @@ export const Budgets = pgTable('budgets', {
 export const Expenses = pgTable('expenses', {
     id: serial('id').primaryKey(),
     name: varchar('name').notNull(),
-    amount: numeric('amount').default('0').notNull(), // Your DB uses numeric with default 0
+    amount: varchar('amount').default('0').notNull(), // Keep as varchar to match current DB
     budgetId: integer('budgetId').references(() => Budgets.id),
     // categoryId: integer('categoryId').references(() => Categories.id), // Temporarily commented out - column doesn't exist in current DB
-    date: date('date').notNull(),
+    date: varchar('date').notNull(), // Keep as varchar to match current DB
+    notes: varchar('notes'), // Optional notes field
     createdAt: varchar('createdAt').notNull() // Your DB uses varchar for createdAt
     // createdBy: varchar('createdBy').notNull() // Column doesn't exist in actual database
 })
