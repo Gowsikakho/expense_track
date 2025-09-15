@@ -11,4 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Improved UI responsiveness
+- Enhanced database schema
+
+## [1.0.0] - 2025-09-15
 
