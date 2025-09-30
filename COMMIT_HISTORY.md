@@ -7,3 +7,7 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 1
 - Initial project setup
 - Created core documentation files
+
+### Week 2
+- Added features documentation
+- Implemented setup guide
