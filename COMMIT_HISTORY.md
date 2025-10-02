@@ -11,3 +11,9 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 2
 - Added features documentation
 - Implemented setup guide
+
+## September 2025
+
+### Week 1
+- Enhanced documentation
+- Added contributing guidelines
