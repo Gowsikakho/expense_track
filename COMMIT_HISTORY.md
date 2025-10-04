@@ -17,3 +17,7 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 1
 - Enhanced documentation
 - Added contributing guidelines
+
+### Week 2
+- Updated README with project details
+- Added changelog entries
