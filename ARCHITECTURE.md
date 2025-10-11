@@ -10,4 +10,6 @@ This document describes the architecture of the Expense Tracker application.
 
 ## Backend Architecture
 - Serverless database (Neon PostgreSQL)
+- Drizzle ORM for database queries
+- Clerk for authentication
 
