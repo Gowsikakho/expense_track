@@ -13,3 +13,5 @@
 - id: serial primary key
 - name: varchar
 - amount: numeric
+- budgetId: integer (foreign key)
+- createdAt: varchar
