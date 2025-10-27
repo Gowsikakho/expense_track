@@ -9,3 +9,5 @@
 1. Connect repository to Vercel
 2. Configure environment variables
 3. Deploy application
+4. Verify database connection
+5. Test authentication flow
