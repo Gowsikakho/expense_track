@@ -27,3 +27,7 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 1
 - Created architecture documentation
 - Added API documentation
+
+### Week 2
+- Created deployment guide
+- Enhanced documentation structure
