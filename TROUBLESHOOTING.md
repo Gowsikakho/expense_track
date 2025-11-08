@@ -10,3 +10,5 @@ If you encounter database connection errors:
 
 ### Authentication Issues
 If Clerk authentication fails:
+1. Verify Clerk API keys in environment variables
+2. Check middleware configuration
