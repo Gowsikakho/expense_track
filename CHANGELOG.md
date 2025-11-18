@@ -18,4 +18,8 @@ All notable changes to this project will be documented in this file.
 - Core budget and expense tracking features
 
 ## [1.1.0] - 2025-10-15
+### Added
+- Enhanced documentation
+- Architecture documentation
+- API documentation
 
