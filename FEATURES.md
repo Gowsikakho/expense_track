@@ -15,3 +15,7 @@ This expense tracking application provides comprehensive budget and expense mana
 - Income and savings tracking
 - Expense analytics and insights
 
+## Technical Features
+- Serverless architecture
+- Real-time data synchronization
+
