@@ -12,3 +12,6 @@
 4. Run database migrations
 5. Start development server: `npm run dev`
 
+## Environment Variables
+Create a `.env.local` file with the following variables:
+
