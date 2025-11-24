@@ -14,4 +14,7 @@
 
 ## Environment Variables
 Create a `.env.local` file with the following variables:
+- DATABASE_URL
+- CLERK_PUBLISHABLE_KEY
+- CLERK_SECRET_KEY
 
