@@ -15,4 +15,5 @@ Please be respectful and professional in all interactions.
 ## Commit Message Guidelines
 - Use imperative mood
 - Keep messages concise and descriptive
+- Reference issue numbers when applicable
 
