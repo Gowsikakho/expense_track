@@ -15,3 +15,6 @@
 - amount: numeric
 - budgetId: integer (foreign key)
 - createdAt: varchar
+
+## API Endpoints
+All database operations are performed server-side using Drizzle ORM.
