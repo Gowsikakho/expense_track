@@ -31,3 +31,9 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 2
 - Created deployment guide
 - Enhanced documentation structure
+
+## November 2025
+
+### Week 1
+- Created troubleshooting guide
+- Added security documentation
