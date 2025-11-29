@@ -13,3 +13,9 @@ This document describes the architecture of the Expense Tracker application.
 - Drizzle ORM for database queries
 - Clerk for authentication
 
+## Data Flow
+1. User interacts with React components
+2. Components call server actions
+3. Server actions query database via Drizzle ORM
+4. Results are returned to components
+
