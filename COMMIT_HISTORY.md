@@ -37,3 +37,7 @@ This document tracks the development history of the Expense Tracker project.
 ### Week 1
 - Created troubleshooting guide
 - Added security documentation
+
+### Week 2
+- Finalized documentation
+- Updated changelog and features
