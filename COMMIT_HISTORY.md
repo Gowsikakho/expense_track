@@ -480,30 +480,11 @@ Update package.json with all required dependencies
 Add database push and studio scripts to package.json
 ```
 
-**2025-11-14 18:43**
-```
-Finalize schema with all tables and relationships
-```
-
-**2025-11-14 19:29**
-```
-Update dashboard layout to remove console.log statements
-```
-
 **2025-11-16 18:16**
 ```
 Add responsive design improvements to mobile views
 ```
 
-**2025-11-17 18:52**
-```
-Implement final bug fixes and code cleanup
-```
-
-**2025-11-18 18:38**
-```
-Add comprehensive error handling across all components
-```
 
 **2025-11-19 18:24**
 ```
@@ -511,16 +492,6 @@ Final commit: Production-ready expense tracker application
 ```
 
 ---
-
-## Summary
-
-Total Commits: 78
-
-**Breakdown by Month:**
-- August 2025: 24 commits
-- September 2025: 20 commits
-- October 2025: 20 commits
-- November 2025: 14 commits
 
 **Key Development Phases:**
 1. **Project Setup** (August 5-15): Initial configuration, authentication, basic UI
