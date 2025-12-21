@@ -66,7 +66,9 @@ const DashboardHeader = () => {
           alt='logo'
           width={120}
           height={80}
+          priority
           className='rounded-t-md bg-blue-400'
+          style={{ width: 'auto', height: 'auto' }}
         />
       </div>
 

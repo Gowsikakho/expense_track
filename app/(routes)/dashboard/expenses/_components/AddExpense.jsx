@@ -104,8 +104,9 @@ const AddExpense = ({ budgetId, user, refreshData, budgetInfo }) => {
             name: name,
             amount: amount,
             budgetId: budgetId,
-            createdAt: moment().format("DD/MM/YYYY")
-        }).returning({ insertedId: Budgets.id })
+            date: moment().format('YYYY-MM-DD'),
+            createdAt: moment().format('YYYY-MM-DD HH:mm:ss')
+        }).returning({ insertedId: Expenses.id })
 
         if (result) {
             setLoading(false);

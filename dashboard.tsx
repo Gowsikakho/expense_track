@@ -9,7 +9,7 @@ export default function DashboardPage() {
         <div style={{ textAlign: "center", marginTop: "100px" }}>
           <h1>Welcome, {user?.firstName} 👋</h1>
           <p>Email: {user?.emailAddresses[0].emailAddress}</p>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <UserButton fallbackRedirectUrl="/sign-in" />
         </div>
       </SignedIn>
 

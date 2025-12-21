@@ -1,9 +1,9 @@
-import { integer, numeric, pgTable, serial, varchar } from "drizzle-orm/pg-core";
+import { integer, numeric, pgTable, serial, varchar, date, decimal, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const Budgets = pgTable('budgets', {
     id: serial('id').primaryKey(),
     name: varchar('name').notNull(),
-    amount: varchar('amount').notNull(),
+    amount: varchar('amount').notNull(), // Note: Your DB uses varchar, not decimal
     icon: varchar('icon'),
     createdBy: varchar('createdBy').notNull()
 })
@@ -11,7 +11,36 @@ export const Budgets = pgTable('budgets', {
 export const Expenses = pgTable('expenses', {
     id: serial('id').primaryKey(),
     name: varchar('name').notNull(),
-    amount: numeric('amount').notNull().default(0),
+    amount: varchar('amount').default('0').notNull(), // Keep as varchar to match current DB
     budgetId: integer('budgetId').references(() => Budgets.id),
-    createdAt: varchar('createdAt').notNull(),
+    // categoryId: integer('categoryId').references(() => Categories.id), // Temporarily commented out - column doesn't exist in current DB
+    date: varchar('date').notNull(), // Keep as varchar to match current DB
+    notes: varchar('notes'), // Optional notes field
+    createdAt: varchar('createdAt').notNull() // Your DB uses varchar for createdAt
+    // createdBy: varchar('createdBy').notNull() // Column doesn't exist in actual database
+})
+
+export const Categories = pgTable('categories', {
+    id: serial('id').primaryKey(),
+    name: varchar('name').notNull(),
+    icon: varchar('icon'),
+    color: varchar('color'),
+    createdBy: varchar('createdBy').notNull()
+})
+
+export const Income = pgTable('income', {
+    id: serial('id').primaryKey(),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    month: varchar('month').notNull(), // Format: YYYY-MM
+    createdBy: varchar('createdBy').notNull(),
+    createdAt: timestamp('createdAt').defaultNow()
+})
+
+export const Savings = pgTable('savings', {
+    id: serial('id').primaryKey(),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull().default(0),
+    month: varchar('month').notNull(), // Format: YYYY-MM
+    isRollover: boolean('isRollover').default(false),
+    createdBy: varchar('createdBy').notNull(),
+    createdAt: timestamp('createdAt').defaultNow()
 })

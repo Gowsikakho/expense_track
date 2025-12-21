@@ -22,16 +22,20 @@ const CardInfo = ({ budgetList }) => {
         // console.log(budgetList);
         let totalBudget_ = 0;
         let totalSpent_ = 0;
-        let budgetCreated_ = budgetList.length;
-        budgetList.forEach((budget) => {
+        let budgetCreated_ = 0;
+        
+        // Only consider active budgets (where remaining > 0)
+        const activeBudgets = budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0);
+        
+        activeBudgets.forEach((budget) => {
             // console.log(budget);
             totalBudget_ += Number(budget.amount);
-            totalSpent_ += Number(budget.totalSpend);
+            totalSpent_ += Number(budget.totalSpend || 0);
         })
+        
         setTotalBudget(totalBudget_);
         setTotalSpent(totalSpent_);
-        setTotalBudgetCreated(budgetCreated_);
-
+        setTotalBudgetCreated(activeBudgets.length);
     }
 
     // useEffect(() => {
@@ -42,7 +46,7 @@ const CardInfo = ({ budgetList }) => {
 
     return (
         <>
-            {budgetList.length > 0 ?
+            {budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).length > 0 ?
                 <div className="mt-7 grid grids-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <div className="p-10 border rounded-lg flex items-center justify-between bg-black">
                         <div className="">
@@ -60,7 +64,7 @@ const CardInfo = ({ budgetList }) => {
                     </div>
                     <div className="p-10 border rounded-lg flex items-center justify-between bg-black">
                         <div className="">
-                            <h2 className="text-sm">Budgets Created</h2>
+                            <h2 className="text-sm">Active Budgets</h2>
                             <h2 className="flex items-center font-bold text-2xl">{totalBudgetCreated}</h2>
                         </div>
                         <div className="bg-primary p-3 h-12 w-12 rounded-full flex items-center justify-center text-2xl"><FaWallet className="" /></div>

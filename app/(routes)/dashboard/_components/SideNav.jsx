@@ -39,7 +39,9 @@ const SideNav = () => {
                 alt='logo'
                 width={160}
                 height={100}
+                priority
                 className='rounded-t-md bg-blue-400'
+                style={{ width: 'auto', height: 'auto' }}
             />
 
             <div className="mt-5">
