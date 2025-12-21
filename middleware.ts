@@ -1,22 +1,32 @@
-import {clerkMiddleware, createRouteMatcher} from "@clerk/nextjs/server";
+// middleware.ts
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)","/profile(.*)"]); //addYourSpecificRoutesInHereInTheFormOfAnArrayElement
+// 1️⃣ Define the routes you want to protect
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/profile(.*)",
+]);
 
-export default clerkMiddleware((auth, req) => {
-  if (isProtectedRoute(req)) {
-    auth().protect();
+// 2️⃣ Middleware function
+export default clerkMiddleware((auth) => {
+  const req = auth.request;
+
+  // If route is protected and user is NOT signed in, redirect to /sign-in
+  if (isProtectedRoute(req) && !auth.isSignedIn) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/sign-in" },
+    });
   }
+
+  // If route is not protected or user is signed in, continue
+  return new Response(null);
 });
 
+// 3️⃣ Configure which paths the middleware applies to
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    "/((?!_next/|.*\\..*).*)", // Apply to all pages except _next and static files
+    "/api/:path*",             // Optionally protect API routes
+  ],
 };
-
-//old version code which doesn't support auth protection
-// import { clerkMiddleware } from "@clerk/nextjs/server";
-
-// export default clerkMiddleware();
-
-// export const config = {
-//   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
-// };
