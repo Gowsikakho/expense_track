@@ -1,5 +1,5 @@
 "use client"
-import { UserButton, useUser } from '@clerk/nextjs'
+import { useSession } from 'next-auth/react'
 import React, { useEffect, useState, useMemo } from 'react'
 import CardInfo from './_components/CardInfo';
 import { desc, eq, getTableColumns, sql, and, gte, lte } from 'drizzle-orm';
@@ -16,7 +16,7 @@ import moment from 'moment';
 
 const page = () => {
 
-    const { user } = useUser();
+    const { data: session } = useSession();
 
     const [budgetList, setBudgetList] = useState([]);
     const [expensesList, setExpensesList] = useState([]);
@@ -32,10 +32,10 @@ const page = () => {
     );
 
     useEffect(() => {
-        if (user) {
+        if (session?.user?.email) {
             loadInitialData();
         }
-    }, [user]);
+    }, [session]);
 
     const loadInitialData = async () => {
         setLoading(true);
@@ -62,7 +62,7 @@ const page = () => {
                 totalItem: sql`count(${Expenses.id})`.mapWith(Number),
             }).from(Budgets)
                 .leftJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
-                .where(eq(Budgets.createdBy, user.primaryEmailAddress?.emailAddress))
+                .where(eq(Budgets.createdBy, session.user.email))
                 .groupBy(Budgets.id)
                 .orderBy(desc(Budgets.id));
 
@@ -83,7 +83,7 @@ const page = () => {
                 date: Expenses.date
             }).from(Expenses)
                 .orderBy(desc(Expenses.id))
-                .limit(5); // Reduced from 10 to 5
+                .limit(5);
 
             setExpensesList(result);
         } catch (error) {
@@ -102,7 +102,7 @@ const page = () => {
                 createdBy: Categories.createdBy
             })
                 .from(Categories)
-                .where(eq(Categories.createdBy, user.primaryEmailAddress?.emailAddress));
+                .where(eq(Categories.createdBy, session.user.email));
             setCategories(result);
         } catch (error) {
             console.error('Error fetching categories:', error);
@@ -121,7 +121,7 @@ const page = () => {
                 .from(Income)
                 .where(
                     and(
-                        eq(Income.createdBy, user.primaryEmailAddress?.emailAddress),
+                        eq(Income.createdBy, session.user.email),
                         eq(Income.month, currentMonth)
                     )
                 )
@@ -153,9 +153,9 @@ const page = () => {
 
     return (
         <div className="mt-16 md:mt-0 text-white p-8">
-            {user ?
+            {session?.user ?
                 <div>
-                    <h2 className="font-bold text-3xl">Hi, {user?.fullName}</h2>
+                    <h2 className="font-bold text-3xl">Hi, {session.user.name}</h2>
                     <p className="text-gray-500">Here's what happening with your money, let's manage your expenses</p>
                 </div> :
                 <div>
@@ -212,7 +212,7 @@ const page = () => {
             {activeTab === 'overview' && (
                 <>
                     <IncomeSavingsTracker 
-                        user={user} 
+                        user={session?.user} 
                         refreshData={() => {
                             getBudgetList();
                             fetchMonthlyIncome();
@@ -244,9 +244,9 @@ const page = () => {
             )}
 
             {/* Lazy load other tabs */}
-            {activeTab === 'calendar' && user && (
+            {activeTab === 'calendar' && session?.user && (
                 <ExpenseCalendar
-                    user={user}
+                    user={session.user}
                     refreshData={() => {
                         getBudgetList();
                         getAllExpenses();
@@ -256,13 +256,13 @@ const page = () => {
                 />
             )}
 
-            {activeTab === 'analytics' && user && (
-                <ExpenseAnalytics user={user} />
+            {activeTab === 'analytics' && session?.user && (
+                <ExpenseAnalytics user={session.user} />
             )}
 
-            {activeTab === 'categories' && user && (
+            {activeTab === 'categories' && session?.user && (
                 <CategoriesManager 
-                    user={user} 
+                    user={session.user} 
                     refreshCategories={fetchCategories}
                 />
             )}

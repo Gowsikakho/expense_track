@@ -39,7 +39,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 .from(Income)
                 .where(
                     and(
-                        eq(Income.createdBy, user.primaryEmailAddress?.emailAddress),
+                        eq(Income.createdBy, user.email),
                         eq(Income.month, currentMonth)
                     )
                 )
@@ -58,7 +58,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 createdBy: Savings.createdBy
             })
                 .from(Savings)
-                .where(eq(Savings.createdBy, user.primaryEmailAddress?.emailAddress))
+                .where(eq(Savings.createdBy, user.email))
                 .orderBy(desc(Savings.id))
 
             const total = savingsResult.reduce((sum, saving) => sum + Number(saving.amount), 0)
@@ -98,7 +98,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
             return
         }
 
-        if (!user?.primaryEmailAddress?.emailAddress) {
+        if (!user?.email) {
             toast.error('User not authenticated')
             return
         }
@@ -112,7 +112,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 .from(Income)
                 .where(
                     and(
-                        eq(Income.createdBy, user.primaryEmailAddress.emailAddress),
+                        eq(Income.createdBy, user.email),
                         eq(Income.month, currentMonth)
                     )
                 )
@@ -127,7 +127,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 await db.insert(Income).values({
                     amount: incomeAmount,
                     month: currentMonth,
-                    createdBy: user.primaryEmailAddress.emailAddress
+                    createdBy: user.email
                 })
             }
 
@@ -152,7 +152,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                     amount: remaining.toString(),
                     month: currentMonth,
                     isRollover: true,
-                    createdBy: user.primaryEmailAddress?.emailAddress
+                    createdBy: user.email
                 })
 
                 if (remaining > 0) {
