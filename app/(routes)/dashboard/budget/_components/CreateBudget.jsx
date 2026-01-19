@@ -59,32 +59,42 @@ const CreateBudget = ({ refreshData }) => {
 
     const { user } = useUser();
     const onCreateBudget = async () => {
-        const audio = new Audio("/notification.mp3");
-        const result = await db.insert(Budgets)
-            .values({
-                name: name,
-                amount: amount,
-                createdBy: user?.primaryEmailAddress?.emailAddress,
-                icon: emojiIcon
-            }).returning({ insertedId: Budgets.id })
+        try {
+            if (!user?.primaryEmailAddress?.emailAddress) {
+                toast.error('Please wait for user data to load');
+                return;
+            }
 
-        if (result) {
-            refreshData();
-            toast.success('New Budget Created!', {
-                style: {
-                    border: "2px solid #28a745",
-                    backgroundColor: '#d4edda',
-                    color: '#155724',
-                    padding: '14px',
-                    borderRadius: '10px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                    fontFamily: 'Arial, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: "700"
-                }
-            });
+            const audio = new Audio("/notification.mp3");
+            const result = await db.insert(Budgets)
+                .values({
+                    name: name,
+                    amount: amount,
+                    createdBy: user.primaryEmailAddress.emailAddress,
+                    icon: emojiIcon
+                }).returning({ insertedId: Budgets.id })
 
-            audio.play();
+            if (result) {
+                refreshData();
+                toast.success('New Budget Created!', {
+                    style: {
+                        border: "2px solid #28a745",
+                        backgroundColor: '#d4edda',
+                        color: '#155724',
+                        padding: '14px',
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '14px',
+                        fontWeight: "700"
+                    }
+                });
+
+                audio.play();
+            }
+        } catch (error) {
+            console.error('Error creating budget:', error);
+            toast.error('Failed to create budget. Please try again.');
         }
     }
 
@@ -151,7 +161,7 @@ const CreateBudget = ({ refreshData }) => {
                         <DialogClose asChild>
                             <div className="mt-5 w-full flex justify-center">
                                 <Button
-                                    disabled={!(name && amount)}
+                                    disabled={!(name && amount && user?.primaryEmailAddress?.emailAddress)}
                                     className="text-center w-full"
                                     onClick={() => onCreateBudget()}
                                 >

@@ -98,6 +98,11 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
             return
         }
 
+        if (!user?.primaryEmailAddress?.emailAddress) {
+            toast.error('User not authenticated')
+            return
+        }
+
         try {
             // Check if income already exists for this month
             const existingIncome = await db.select({
@@ -107,7 +112,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 .from(Income)
                 .where(
                     and(
-                        eq(Income.createdBy, user.primaryEmailAddress?.emailAddress),
+                        eq(Income.createdBy, user.primaryEmailAddress.emailAddress),
                         eq(Income.month, currentMonth)
                     )
                 )
@@ -122,7 +127,7 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
                 await db.insert(Income).values({
                     amount: incomeAmount,
                     month: currentMonth,
-                    createdBy: user.primaryEmailAddress?.emailAddress
+                    createdBy: user.primaryEmailAddress.emailAddress
                 })
             }
 

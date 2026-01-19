@@ -57,6 +57,7 @@ const Hero = () => {
                         width={1000}
                         height={700}
                         className="rounded-xl"
+                        style={{ width: 'auto', height: 'auto' }}
                     />
                 </div>
             </div>

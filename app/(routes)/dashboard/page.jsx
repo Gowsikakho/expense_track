@@ -1,6 +1,6 @@
 "use client"
 import { UserButton, useUser } from '@clerk/nextjs'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import CardInfo from './_components/CardInfo';
 import { desc, eq, getTableColumns, sql, and, gte, lte } from 'drizzle-orm';
 import { Budgets, Expenses, Categories, Income } from '@/utils/schema';
@@ -23,14 +23,32 @@ const page = () => {
     const [categories, setCategories] = useState([]);
     const [monthlyIncome, setMonthlyIncome] = useState(0);
     const [activeTab, setActiveTab] = useState('overview');
+    const [loading, setLoading] = useState(true);
+
+    // Memoize filtered active budgets
+    const activeBudgets = useMemo(() => 
+        budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).slice(0, 4),
+        [budgetList]
+    );
 
     useEffect(() => {
         if (user) {
-            getBudgetList();
-            fetchCategories();
-            fetchMonthlyIncome();
+            loadInitialData();
         }
     }, [user]);
+
+    const loadInitialData = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                getBudgetList(),
+                fetchCategories(),
+                fetchMonthlyIncome()
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getBudgetList = async () => {
         try {
@@ -65,7 +83,7 @@ const page = () => {
                 date: Expenses.date
             }).from(Expenses)
                 .orderBy(desc(Expenses.id))
-                .limit(10);
+                .limit(5); // Reduced from 10 to 5
 
             setExpensesList(result);
         } catch (error) {
@@ -117,9 +135,21 @@ const page = () => {
         }
     }
 
-    // useEffect(() => {
-    //     console.log(expensesList);
-    // }, [expensesList])
+    if (loading) {
+        return (
+            <div className="mt-16 md:mt-0 text-white p-8">
+                <div className="animate-pulse">
+                    <div className="h-8 bg-slate-800 rounded w-48 mb-2"></div>
+                    <div className="h-4 bg-slate-800 rounded w-64 mb-8"></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div className="h-24 bg-slate-800 rounded"></div>
+                        <div className="h-24 bg-slate-800 rounded"></div>
+                        <div className="h-24 bg-slate-800 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="mt-16 md:mt-0 text-white p-8">
@@ -181,7 +211,6 @@ const page = () => {
             {/* Tab Content */}
             {activeTab === 'overview' && (
                 <>
-                    {/* Income and Savings Tracker */}
                     <IncomeSavingsTracker 
                         user={user} 
                         refreshData={() => {
@@ -190,45 +219,31 @@ const page = () => {
                         }} 
                     />
                     
-                    <CardInfo
-                        budgetList={budgetList}
-                    />
+                    <CardInfo budgetList={budgetList} />
                     
                     <div className="grid grid-cols-1 lg:grid-cols-3 mt-10 gap-5">
-                        {user && (
-                            <>
-                                <div className="md:col-span-2 flex flex-col gap-4">
-                                    <BarChartDashboard
-                                        budgetList={budgetList}
-                                    />
+                        <div className="md:col-span-2 flex flex-col gap-4">
+                            <BarChartDashboard budgetList={budgetList} />
+                        </div>
+                        <div className="grid gap-3">
+                            <h2 className="font-bold text-lg">Active Budgets</h2>
+                            {activeBudgets.length > 0 ? (
+                                activeBudgets.map((budget, index) => (
+                                    <BudgetItem budget={budget} key={budget.id} />
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-400">
+                                    <div className="text-4xl mb-2">💰</div>
+                                    <p>No active budgets</p>
+                                    <p className="text-sm">All budgets are fully used</p>
                                 </div>
-                                <div className="grid gap-3">
-                                    <h2 className="font-bold text-lg">Active Budgets</h2>
-                                    {budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).length > 0 ? (
-                                        budgetList
-                                            .filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0)
-                                            .slice(0, 4)
-                                            .map((budget, index) => (
-                                                <BudgetItem
-                                                    budget={budget}
-                                                    key={index}
-                                                />
-                                            ))
-                                    ) : (
-                                        <div className="text-center py-8 text-gray-400">
-                                            <div className="text-4xl mb-2">💰</div>
-                                            <p>No active budgets</p>
-                                            <p className="text-sm">All budgets are fully used</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </>
             )}
 
-            {/* Calendar Tab */}
+            {/* Lazy load other tabs */}
             {activeTab === 'calendar' && user && (
                 <ExpenseCalendar
                     user={user}
@@ -241,12 +256,10 @@ const page = () => {
                 />
             )}
 
-            {/* Analytics Tab */}
             {activeTab === 'analytics' && user && (
                 <ExpenseAnalytics user={user} />
             )}
 
-            {/* Categories Tab */}
             {activeTab === 'categories' && user && (
                 <CategoriesManager 
                     user={user} 

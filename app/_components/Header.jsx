@@ -2,12 +2,12 @@
 import React from 'react'
 import Image from "next/image"
 import { Button } from '@/components/ui/button'
-import { UserButton, useUser } from '@clerk/nextjs';
+import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link';
 
 const Header = () => {
 
-  const { user, isSignedIn } = useUser();
+  const { data: session } = useSession();
 
   const clicked = () => {
     const audio = new Audio("/button.wav");
@@ -25,8 +25,11 @@ const Header = () => {
           className='rounded-t-md bg-blue-400'
           style={{ width: 'auto', height: 'auto' }}
         />
-        {isSignedIn ?
-          <span className="px-3"><UserButton /></span> :
+        {session ?
+          <div className="flex items-center gap-3">
+            <span className="text-white">{session.user.name}</span>
+            <Button onClick={() => signOut()} variant="outline">Sign Out</Button>
+          </div> :
           <Link href={"/dashboard"}>
             <Button
               className="hover:bg-white border border-slate-900 border-y-2 border-x-2 hover:text-black"
