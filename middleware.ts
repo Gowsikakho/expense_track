@@ -8,19 +8,11 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 // 2️⃣ Middleware function
-export default clerkMiddleware((auth) => {
-  const req = auth.request;
-
+export default clerkMiddleware((auth, req) => {
   // If route is protected and user is NOT signed in, redirect to /sign-in
-  if (isProtectedRoute(req) && !auth.isSignedIn) {
-    return new Response(null, {
-      status: 302,
-      headers: { Location: "/sign-in" },
-    });
+  if (isProtectedRoute(req) && !auth().userId) {
+    return auth().redirectToSignIn();
   }
-
-  // If route is not protected or user is signed in, continue
-  return new Response(null);
 });
 
 // 3️⃣ Configure which paths the middleware applies to

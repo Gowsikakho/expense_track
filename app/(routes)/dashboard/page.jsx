@@ -33,35 +33,45 @@ const page = () => {
     }, [user]);
 
     const getBudgetList = async () => {
-        const result = await db.select({
-            id: Budgets.id,
-            name: Budgets.name,
-            amount: Budgets.amount,
-            icon: Budgets.icon,
-            createdBy: Budgets.createdBy,
-            totalSpend: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number),
-            totalItem: sql`count(${Expenses.id})`.mapWith(Number),
-        }).from(Budgets)
-            .leftJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
-            .where(eq(Budgets.createdBy, user.primaryEmailAddress?.emailAddress))
-            .groupBy(Budgets.id)
-            .orderBy(desc(Budgets.id));
+        try {
+            const result = await db.select({
+                id: Budgets.id,
+                name: Budgets.name,
+                amount: Budgets.amount,
+                icon: Budgets.icon,
+                createdBy: Budgets.createdBy,
+                totalSpend: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number),
+                totalItem: sql`count(${Expenses.id})`.mapWith(Number),
+            }).from(Budgets)
+                .leftJoin(Expenses, eq(Budgets.id, Expenses.budgetId))
+                .where(eq(Budgets.createdBy, user.primaryEmailAddress?.emailAddress))
+                .groupBy(Budgets.id)
+                .orderBy(desc(Budgets.id));
 
-        setBudgetList(result);
-        getAllExpenses();
+            setBudgetList(result);
+            getAllExpenses();
+        } catch (error) {
+            console.error('Error fetching budgets:', error);
+            setBudgetList([]);
+        }
     }
 
     const getAllExpenses = async () => {
-        const result = await db.select({
-            id: Expenses.id,
-            name: Expenses.name,
-            amount: Expenses.amount,
-            date: Expenses.date
-        }).from(Expenses)
-            .orderBy(desc(Expenses.id))
-            .limit(10);
+        try {
+            const result = await db.select({
+                id: Expenses.id,
+                name: Expenses.name,
+                amount: Expenses.amount,
+                date: Expenses.date
+            }).from(Expenses)
+                .orderBy(desc(Expenses.id))
+                .limit(10);
 
-        setExpensesList(result);
+            setExpensesList(result);
+        } catch (error) {
+            console.error('Error fetching expenses:', error);
+            setExpensesList([]);
+        }
     }
 
     const fetchCategories = async () => {
