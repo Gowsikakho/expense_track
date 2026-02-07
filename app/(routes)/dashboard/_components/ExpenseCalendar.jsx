@@ -1,19 +1,19 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Modal from '@/components/ui/modal'
 import ExpenseCard from '@/components/ui/expense-card'
 import { db } from '@/utils/dbConfig'
-import { Expenses, Categories } from '@/utils/schema'
+import { Expenses } from '@/utils/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { toast } from 'sonner'
 import { FaRupeeSign } from 'react-icons/fa'
 import moment from 'moment'
 
 const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
-    const [currentDate, setCurrentDate] = useState(new Date())
+    const [currentDate, setCurrentDate] = useState(() => new Date())
     const [selectedDate, setSelectedDate] = useState(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [monthExpenses, setMonthExpenses] = useState([])
@@ -21,38 +21,26 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
     const [expenseAmount, setExpenseAmount] = useState('')
     const [expenseNotes, setExpenseNotes] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('')
-    const [expenseDate, setExpenseDate] = useState(moment().format('YYYY-MM-DD'))
+    const [expenseDate, setExpenseDate] = useState('')
     const [dailyExpenses, setDailyExpenses] = useState({})
     const [isAddingExpense, setIsAddingExpense] = useState(false)
     const [isDeletingExpense, setIsDeletingExpense] = useState(false)
+    const [isClient, setIsClient] = useState(false)
 
+    // Set client-side date after hydration
     useEffect(() => {
-        if (user) {
-            console.log('User found, fetching expenses...')
-            fetchMonthExpenses()
-        } else {
-            console.log('No user found')
-        }
-    }, [currentDate, user])
+        setIsClient(true)
+        setExpenseDate(moment().format('YYYY-MM-DD'))
+    }, [])
 
-    const fetchMonthExpenses = async () => {
+    const fetchMonthExpenses = useCallback(async () => {
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-        
+
         const startDate = moment(startOfMonth).format('YYYY-MM-DD')
         const endDate = moment(endOfMonth).format('YYYY-MM-DD')
 
         try {
-            
-            // First, let's try without any filters to see if we get any data
-            const allExpenses = await db.select().from(Expenses)
-            console.log('All expenses without filters:', allExpenses)
-            
-            // Debug: Check if any expenses have budgetId = null
-            const personalExpenses = allExpenses.filter(expense => expense.budgetId === null)
-            console.log('Personal expenses (budgetId = null):', personalExpenses)
-            
-            // Try without budgetId filter first
             const result = await db.select({
                 id: Expenses.id,
                 name: Expenses.name,
@@ -66,35 +54,34 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                     and(
                         gte(Expenses.date, startDate),
                         lte(Expenses.date, endDate)
-                        // Temporarily remove budgetId filter to test
-                        // eq(Expenses.budgetId, null)
                     )
                 )
-            
-            console.log('Filtered result:', result)
 
             setMonthExpenses(result)
-            
+
             // Group expenses by date
             const grouped = result.reduce((acc, expense) => {
                 const date = expense.date
-                console.log('Processing expense:', expense.name, 'for date:', date)
                 if (!acc[date]) {
                     acc[date] = []
                 }
                 acc[date].push(expense)
                 return acc
             }, {})
-            
-            console.log('Final grouped expenses:', grouped)
-            
+
             setDailyExpenses(grouped)
         } catch (error) {
             console.error('Error fetching expenses:', error)
         }
-    }
+    }, [currentDate])
 
-    const getDaysInMonth = () => {
+    useEffect(() => {
+        if (user) {
+            fetchMonthExpenses()
+        }
+    }, [currentDate, user, fetchMonthExpenses])
+
+    const daysInMonth = useMemo(() => {
         const year = currentDate.getFullYear()
         const month = currentDate.getMonth()
         const firstDay = new Date(year, month, 1)
@@ -103,62 +90,66 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         const startingDayOfWeek = firstDay.getDay()
 
         const days = []
-        
+
         // Add empty cells for days before the start of the month
         for (let i = 0; i < startingDayOfWeek; i++) {
             days.push(null)
         }
-        
+
         // Add all days of the month
         for (let i = 1; i <= daysInMonth; i++) {
             days.push(i)
         }
-        
-        return days
-    }
 
-    const navigateMonth = (direction) => {
+        return days
+    }, [currentDate])
+
+    const navigateMonth = useCallback((direction) => {
         const newDate = new Date(currentDate)
         newDate.setMonth(currentDate.getMonth() + direction)
         setCurrentDate(newDate)
-    }
+    }, [currentDate])
 
-    const handleDateClick = async (day) => {
+    const handleDateClick = useCallback(async (day) => {
         if (day) {
             const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
             setSelectedDate(clickedDate)
             setIsModalOpen(true)
-            
+
             // Set the form date to the clicked date
             const clickedDateStr = moment(clickedDate).format('YYYY-MM-DD')
             setExpenseDate(clickedDateStr)
-            
+
             // Refresh data to ensure we have the latest expenses
             await fetchMonthExpenses()
         }
-    }
+    }, [currentDate, fetchMonthExpenses])
 
-    const closeModal = () => {
+    const closeModal = useCallback(() => {
         setIsModalOpen(false)
         setSelectedDate(null)
-    }
+    }, [])
 
-    const getDayExpenses = (day) => {
+    const getDayExpenses = useCallback((day) => {
         if (!day) return []
         const dateStr = moment(new Date(currentDate.getFullYear(), currentDate.getMonth(), day)).format('YYYY-MM-DD')
         return dailyExpenses[dateStr] || []
-    }
+    }, [currentDate, dailyExpenses])
 
-    const getDayTotal = (day) => {
+    const getDayTotal = useCallback((day) => {
         const expenses = getDayExpenses(day)
         return expenses.reduce((total, expense) => total + Number(expense.amount), 0)
-    }
+    }, [getDayExpenses])
 
-    const getMonthTotal = () => {
+    const monthTotal = useMemo(() => {
         return monthExpenses.reduce((total, expense) => total + Number(expense.amount), 0)
-    }
+    }, [monthExpenses])
 
-    const handleAddExpense = async () => {
+    const remainingBudget = useMemo(() => {
+        return monthlyIncome - monthTotal
+    }, [monthlyIncome, monthTotal])
+
+    const handleAddExpense = useCallback(async () => {
         if (!expenseName || !expenseAmount || !expenseDate) {
             toast.error('Please fill expense name, amount, and date')
             return
@@ -167,39 +158,24 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         setIsAddingExpense(true)
 
         try {
-            console.log('Adding expense with data:', {
-                name: expenseName,
-                amount: expenseAmount,
-                date: expenseDate,
-                notes: expenseNotes,
-                createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
-                budgetId: null
-            })
-            
             const result = await db.insert(Expenses).values({
                 name: expenseName,
                 amount: expenseAmount,
-                date: expenseDate, // Use the selected date
+                date: expenseDate,
                 notes: expenseNotes || null,
                 createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
-                budgetId: null // Ensure this is a personal expense, not budget-related
+                budgetId: null
             })
-            
+
             if (result) {
-                console.log('Expense added successfully:', result)
                 toast.success('Personal expense added successfully!')
                 setExpenseName('')
                 setExpenseAmount('')
                 setExpenseNotes('')
                 setSelectedCategory('')
-                setExpenseDate(moment().format('YYYY-MM-DD')) // Reset to today's date
-                // Refresh data immediately
-                console.log('Refreshing data after adding expense...')
+                setExpenseDate(moment().format('YYYY-MM-DD'))
                 await fetchMonthExpenses()
                 refreshData()
-                // Force re-render to update remaining budget
-                setMonthExpenses(prev => [...prev])
-                console.log('Data refresh completed')
             }
         } catch (error) {
             console.error('Error adding expense:', error)
@@ -207,13 +183,9 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         } finally {
             setIsAddingExpense(false)
         }
-    }
+    }, [expenseName, expenseAmount, expenseDate, expenseNotes, fetchMonthExpenses, refreshData])
 
-    const getRemainingBudget = () => {
-        return monthlyIncome - getMonthTotal()
-    }
-
-    const handleDeleteExpense = async (expenseId) => {
+    const handleDeleteExpense = useCallback(async (expenseId) => {
         if (!confirm('Are you sure you want to delete this expense?')) {
             return
         }
@@ -222,14 +194,11 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
 
         try {
             const result = await db.delete(Expenses).where(eq(Expenses.id, expenseId))
-            
+
             if (result) {
                 toast.success('Expense deleted successfully!')
-                // Refresh data immediately
                 await fetchMonthExpenses()
                 refreshData()
-                // Force re-render to update remaining budget
-                setMonthExpenses(prev => [...prev])
             }
         } catch (error) {
             console.error('Error deleting expense:', error)
@@ -237,7 +206,7 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
         } finally {
             setIsDeletingExpense(false)
         }
-    }
+    }, [fetchMonthExpenses, refreshData])
 
     return (
         <div className="border bg-black rounded-lg p-5">
@@ -246,14 +215,14 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 <div className="flex items-center gap-4">
                     <div className="text-sm">
                         <span className="text-gray-400">Remaining: </span>
-                        <span className={`font-bold ${getRemainingBudget() >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <span className={`font-bold ${remainingBudget >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             <FaRupeeSign className="inline text-sm" />
-                            {Math.abs(getRemainingBudget())}
+                            {Math.abs(remainingBudget)}
                         </span>
                     </div>
                     <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             size="icon"
                             onClick={() => navigateMonth(-1)}
                         >
@@ -264,8 +233,8 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                                 {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                             </span>
                         </div>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             size="icon"
                             onClick={() => navigateMonth(1)}
                         >
@@ -275,7 +244,7 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                 </div>
             </div>
 
-            {/* Add Expense Form - Moved outside calendar */}
+            {/* Add Expense Form */}
             <div className="mb-6 p-4 border border-gray-700 rounded-lg bg-gray-900">
                 <h3 className="font-semibold text-lg mb-4">Add New Expense</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -331,7 +300,7 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                     </div>
                 </div>
                 <div className="mt-4">
-                    <Button 
+                    <Button
                         onClick={handleAddExpense}
                         disabled={!expenseName || !expenseAmount || !expenseDate || isAddingExpense}
                         className="w-full md:w-auto"
@@ -348,15 +317,15 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                         {day}
                     </div>
                 ))}
-                
-                {getDaysInMonth().map((day, index) => {
+
+                {daysInMonth.map((day, index) => {
                     const dayExpenses = getDayExpenses(day)
                     const dayTotal = getDayTotal(day)
-                    const isToday = day && 
-                        new Date().getDate() === day && 
+                    const isToday = day &&
+                        new Date().getDate() === day &&
                         new Date().getMonth() === currentDate.getMonth() &&
                         new Date().getFullYear() === currentDate.getFullYear()
-                    
+
                     return (
                         <div
                             key={index}
@@ -391,14 +360,14 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
             </div>
 
             {/* Modal for displaying expenses */}
-            <Modal 
-                isOpen={isModalOpen} 
+            <Modal
+                isOpen={isModalOpen}
                 onClose={closeModal}
-                title={selectedDate ? `Expenses for ${selectedDate.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                title={selectedDate ? `Expenses for ${selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 })}` : ''}
                 className="max-w-lg"
             >
@@ -406,19 +375,13 @@ const ExpenseCalendar = ({ user, refreshData, categories, monthlyIncome }) => {
                     {selectedDate && (() => {
                         const dateStr = moment(selectedDate).format('YYYY-MM-DD')
                         const dayExpenses = dailyExpenses[dateStr] || []
-                        
-                        console.log('Modal - Selected date:', selectedDate)
-                        console.log('Modal - Looking for date string:', dateStr)
-                        console.log('Modal - Available dates in dailyExpenses:', Object.keys(dailyExpenses))
-                        console.log('Modal - Found expenses for this date:', dayExpenses)
-                        
-                        
+
                         return dayExpenses.length > 0 ? (
                             <div className="space-y-3">
                                 {dayExpenses.map((expense, idx) => (
-                                    <ExpenseCard 
-                                        key={idx} 
-                                        expense={expense} 
+                                    <ExpenseCard
+                                        key={idx}
+                                        expense={expense}
                                         onDelete={handleDeleteExpense}
                                         isDeleting={isDeletingExpense}
                                     />

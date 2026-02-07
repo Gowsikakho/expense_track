@@ -18,14 +18,19 @@ const IncomeSavingsTracker = ({ user, refreshData }) => {
     const [isIncomeDialogOpen, setIsIncomeDialogOpen] = useState(false)
     const [incomeAmount, setIncomeAmount] = useState('')
     const [savingsHistory, setSavingsHistory] = useState([])
-    const currentMonth = moment().format('YYYY-MM')
+    const [currentMonth, setCurrentMonth] = useState('')
+
+    // Initialize currentMonth on client side to avoid hydration mismatch
+    useEffect(() => {
+        setCurrentMonth(moment().format('YYYY-MM'))
+    }, [])
 
     useEffect(() => {
-        if (user) {
+        if (user && currentMonth) {
             fetchIncomeAndSavings()
             fetchMonthlyExpenses()
         }
-    }, [user])
+    }, [user, currentMonth])
 
     const fetchIncomeAndSavings = async () => {
         try {

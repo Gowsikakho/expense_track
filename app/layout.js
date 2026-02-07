@@ -1,4 +1,4 @@
-import { Inter, Outfit } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import AuthProvider from './providers/AuthProvider';
 import { Toaster } from "@/components/ui/sonner";

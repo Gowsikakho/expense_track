@@ -1,52 +1,38 @@
 "use client"
-import { PiggyBank } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo, memo } from 'react'
 import { FaRupeeSign } from 'react-icons/fa'
-import { BsPiggyBankFill } from "react-icons/bs";
 import { GiPiggyBank } from "react-icons/gi";
 import { FaReceipt } from "react-icons/fa";
 import { FaWallet } from "react-icons/fa";
 
-const CardInfo = ({ budgetList }) => {
+const CardInfo = memo(({ budgetList }) => {
 
-    const [totalBudget, setTotalBudget] = useState(0);
-    const [totalSpent, setTotalSpent] = useState(0);
-    const [totalBudgetCreated, setTotalBudgetCreated] = useState(0);
-
-
-    useEffect(() => {
-        budgetList.length > 0 && calculateCardInfo();
-    }, [budgetList])
-
-    const calculateCardInfo = () => {
-        // console.log(budgetList);
-        let totalBudget_ = 0;
-        let totalSpent_ = 0;
-        let budgetCreated_ = 0;
-        
+    const { totalBudget, totalSpent, totalBudgetCreated } = useMemo(() => {
         // Only consider active budgets (where remaining > 0)
         const activeBudgets = budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0);
-        
+
+        let totalBudget_ = 0;
+        let totalSpent_ = 0;
+
         activeBudgets.forEach((budget) => {
-            // console.log(budget);
             totalBudget_ += Number(budget.amount);
             totalSpent_ += Number(budget.totalSpend || 0);
-        })
-        
-        setTotalBudget(totalBudget_);
-        setTotalSpent(totalSpent_);
-        setTotalBudgetCreated(activeBudgets.length);
-    }
+        });
 
-    // useEffect(() => {
-    //     console.log(totalBudget);
-    //     console.log(totalSpent);
-    //     console.log(totalBudgetCreated);
-    // }, [totalBudget, totalSpent, totalBudgetCreated]);
+        return {
+            totalBudget: totalBudget_,
+            totalSpent: totalSpent_,
+            totalBudgetCreated: activeBudgets.length
+        };
+    }, [budgetList]);
+
+    const hasActiveBudgets = useMemo(() => {
+        return budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).length > 0;
+    }, [budgetList]);
 
     return (
         <>
-            {budgetList.filter(budget => (budget.amount - (budget.totalSpend || 0)) > 0).length > 0 ?
+            {hasActiveBudgets ?
                 <div className="mt-7 grid grids-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <div className="p-10 border rounded-lg flex items-center justify-between bg-black">
                         <div className="">
@@ -81,6 +67,8 @@ const CardInfo = ({ budgetList }) => {
             }
         </>
     )
-}
+})
+
+CardInfo.displayName = 'CardInfo'
 
 export default CardInfo

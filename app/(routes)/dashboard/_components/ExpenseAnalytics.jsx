@@ -1,18 +1,18 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { db } from '@/utils/dbConfig'
-import { Expenses, Categories } from '@/utils/schema'
-import { eq, and, gte, lte, sql } from 'drizzle-orm'
+import { Expenses } from '@/utils/schema'
+import { and, gte, lte, sql } from 'drizzle-orm'
 import moment from 'moment'
 import { FaRupeeSign } from 'react-icons/fa'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-const ExpenseAnalytics = ({ user }) => {
+const ExpenseAnalytics = memo(({ user }) => {
     const [categoryData, setCategoryData] = useState([])
     const [timelineData, setTimelineData] = useState([])
-    const [selectedMonth, setSelectedMonth] = useState(new Date())
+    const [selectedMonth, setSelectedMonth] = useState(() => new Date())
     const [totalExpenses, setTotalExpenses] = useState(0)
 
     useEffect(() => {
@@ -28,7 +28,7 @@ const ExpenseAnalytics = ({ user }) => {
         try {
             // Temporarily disable category-based analytics since categoryId doesn't exist yet
             // TODO: Re-enable after database migration adds categoryId column
-            
+
             // For now, just show a placeholder for category data
             const pieData = []
             setCategoryData(pieData)
@@ -41,15 +41,15 @@ const ExpenseAnalytics = ({ user }) => {
                 date: Expenses.date,
                 total: sql`SUM(CAST(${Expenses.amount} AS NUMERIC))`.mapWith(Number)
             })
-            .from(Expenses)
-            .where(
-                and(
-                    gte(Expenses.date, startOfMonth),
-                    lte(Expenses.date, endOfMonth)
+                .from(Expenses)
+                .where(
+                    and(
+                        gte(Expenses.date, startOfMonth),
+                        lte(Expenses.date, endOfMonth)
+                    )
                 )
-            )
-            .groupBy(Expenses.date)
-            .orderBy(Expenses.date)
+                .groupBy(Expenses.date)
+                .orderBy(Expenses.date)
 
             // Process timeline data
             const daysInMonth = moment(selectedMonth).daysInMonth()
@@ -58,7 +58,7 @@ const ExpenseAnalytics = ({ user }) => {
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = moment(selectedMonth).date(day).format('YYYY-MM-DD')
                 const dayData = dailyExpenses.find(item => item.date === dateStr)
-                
+
                 timelineArray.push({
                     day: day,
                     date: dateStr,
@@ -67,7 +67,7 @@ const ExpenseAnalytics = ({ user }) => {
             }
 
             setTimelineData(timelineArray)
-            
+
             // Calculate total expenses from timeline data
             totalExpensesAmount = timelineArray.reduce((sum, day) => sum + day.amount, 0)
             setTotalExpenses(totalExpensesAmount)
@@ -76,11 +76,11 @@ const ExpenseAnalytics = ({ user }) => {
         }
     }
 
-    const navigateMonth = (direction) => {
+    const navigateMonth = useCallback((direction) => {
         const newDate = new Date(selectedMonth)
         newDate.setMonth(selectedMonth.getMonth() + direction)
         setSelectedMonth(newDate)
-    }
+    }, [selectedMonth])
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
@@ -114,17 +114,17 @@ const ExpenseAnalytics = ({ user }) => {
 
     const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
         if (percent < 0.05) return null // Don't show label for small slices
-        
+
         const radius = innerRadius + (outerRadius - innerRadius) * 0.5
         const x = cx + radius * Math.cos(-midAngle * Math.PI / 180)
         const y = cy + radius * Math.sin(-midAngle * Math.PI / 180)
 
         return (
-            <text 
-                x={x} 
-                y={y} 
-                fill="white" 
-                textAnchor={x > cx ? 'start' : 'end'} 
+            <text
+                x={x}
+                y={y}
+                fill="white"
+                textAnchor={x > cx ? 'start' : 'end'}
                 dominantBaseline="central"
                 className="text-xs font-semibold"
             >
@@ -139,8 +139,8 @@ const ExpenseAnalytics = ({ user }) => {
             <div className="flex justify-between items-center">
                 <h2 className="font-bold text-xl">Expense Analytics</h2>
                 <div className="flex gap-2 items-center">
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         size="icon"
                         onClick={() => navigateMonth(-1)}
                     >
@@ -151,8 +151,8 @@ const ExpenseAnalytics = ({ user }) => {
                             {selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                         </span>
                     </div>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         size="icon"
                         onClick={() => navigateMonth(1)}
                     >
@@ -186,13 +186,13 @@ const ExpenseAnalytics = ({ user }) => {
                                     <Tooltip content={<CustomTooltip />} />
                                 </PieChart>
                             </ResponsiveContainer>
-                            
+
                             {/* Category Legend */}
                             <div className="mt-4 grid grid-cols-2 gap-2">
                                 {categoryData.map((category, index) => (
                                     <div key={index} className="flex items-center gap-2 text-sm">
-                                        <div 
-                                            className="w-3 h-3 rounded-full" 
+                                        <div
+                                            className="w-3 h-3 rounded-full"
                                             style={{ backgroundColor: category.color }}
                                         />
                                         <span className="text-gray-400">
@@ -225,12 +225,12 @@ const ExpenseAnalytics = ({ user }) => {
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={timelineData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                <XAxis 
-                                    dataKey="day" 
+                                <XAxis
+                                    dataKey="day"
                                     stroke="#9CA3AF"
                                     tick={{ fontSize: 12 }}
                                 />
-                                <YAxis 
+                                <YAxis
                                     type="number"
                                     domain={[0, 'dataMax']}
                                     allowDecimals={false}
@@ -241,8 +241,8 @@ const ExpenseAnalytics = ({ user }) => {
                                     orientation="left"
                                 />
                                 <Tooltip content={<BarTooltip />} />
-                                <Bar 
-                                    dataKey="amount" 
+                                <Bar
+                                    dataKey="amount"
                                     fill="#4845d2"
                                     radius={[4, 4, 0, 0]}
                                 />
@@ -271,18 +271,18 @@ const ExpenseAnalytics = ({ user }) => {
                         )}
                     </div>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg bg-black">
                     <h4 className="text-sm text-gray-400 mb-2">Average Daily Expense</h4>
                     <div className="font-semibold">
                         <FaRupeeSign className="inline" />
-                        {timelineData.length > 0 
+                        {timelineData.length > 0
                             ? Math.round(totalExpenses / moment(selectedMonth).daysInMonth())
                             : 0
                         }
                     </div>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg bg-black">
                     <h4 className="text-sm text-gray-400 mb-2">Days with Expenses</h4>
                     <div className="font-semibold">
@@ -292,6 +292,8 @@ const ExpenseAnalytics = ({ user }) => {
             </div>
         </div>
     )
-}
+})
+
+ExpenseAnalytics.displayName = 'ExpenseAnalytics'
 
 export default ExpenseAnalytics
